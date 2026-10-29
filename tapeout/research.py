@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 
 from . import llm
 
-TAVILY_URL = "https://api.tavily.com/search"
+TAVILY_URL = os.environ.get("TAVILY_URL", "https://api.tavily.com/search")
 
 
 @dataclass
@@ -168,3 +168,86 @@ def scout(idea: str, *, ledger: llm.Ledger, emit) -> Findings:
     except (llm.LLMError, ValueError) as exc:
         f.note = f"fact extraction failed: {exc}"
     return f
+
+
+# ---------------------------------------------------------------------------
+# Commercial reference: the part a product team would otherwise buy.
+# ---------------------------------------------------------------------------
+
+BENCH_PROMPT = """Product idea: {idea}
+
+Below are web search results for commercial operational amplifiers. Pick ONE \
+op-amp part that the sources describe with numbers, and copy its headline \
+specs. Every "text" must be copied EXACTLY from the source, characters and \
+units included -- it will be checked against the source text, and anything \
+not found there is discarded.
+
+Reply with JSON:
+{{"part": "part number", "manufacturer": "...", "source": "https://... (one URL from the results)",
+  "specs": [{{"name": "gain|gbw|supply_current|supply_voltage", "text": "exact text, e.g. 1.5 MHz"}}]}}
+
+RESULTS:
+{results}"""
+
+# Which unit each benchmark field must carry once parsed.
+BENCH_UNITS = {"gain": "dB", "gbw": "Hz", "supply_current": "A", "supply_voltage": "V"}
+
+
+def _norm(text: str) -> str:
+    return " ".join(text.replace("µ", "u").replace("μ", "u").lower().split())
+
+
+def benchmark(idea: str, *, ledger: llm.Ledger, emit) -> dict | None:
+    """A real op-amp's datasheet numbers, each one verified against its source.
+
+    The model picks the part and copies the figures; the code then refuses any
+    figure that does not appear verbatim in the text Tavily retrieved, and any
+    whose unit does not match the field. What survives is a cited reference,
+    not a claim about our circuit -- it is never simulated.
+    """
+    if not tavily_key() or not llm.online():
+        return None
+    query = f"low power op amp datasheet gain bandwidth supply current {idea}"
+    emit({"type": "log", "agent": "scout", "msg": f"Tavily search (commercial reference): {query}"})
+    try:
+        hits = search(query, max_results=5)
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        emit({"type": "log", "agent": "scout", "msg": f"benchmark search failed: {exc}"})
+        return None
+    pages = {h.get("url", ""): {"title": h.get("title", ""), "content": h.get("content") or ""}
+             for h in hits if h.get("url")}
+    if not pages:
+        return None
+    blob = "\n\n".join(f"URL: {u}\nTITLE: {p['title']}\n{p['content'][:2000]}"
+                       for u, p in pages.items())
+    try:
+        answer, _ = llm.chat(
+            "nano", [{"role": "user", "content": BENCH_PROMPT.format(idea=idea, results=blob)}],
+            ledger=ledger, json_mode=True, reasoning=False, max_tokens=600, temperature=0.1)
+        raw = llm.extract_json(answer)
+    except (llm.LLMError, ValueError) as exc:
+        emit({"type": "log", "agent": "scout", "msg": f"benchmark extraction failed: {exc}"})
+        return None
+
+    from bias import specparse
+
+    src = str(raw.get("source", ""))
+    if src not in pages:
+        return None                                   # an invented citation
+    page = _norm(pages[src]["content"])
+    specs, dropped = [], []
+    for item in raw.get("specs") or []:
+        name, text = str(item.get("name", "")), str(item.get("text", "")).strip()
+        qty = specparse.quantities(text)
+        if (name in BENCH_UNITS and text and _norm(text) in page and qty
+                and qty[0].unit == BENCH_UNITS[name]):
+            specs.append({"name": name, "text": text, "value": qty[0].value,
+                          "unit": qty[0].unit})
+        else:
+            dropped.append(text or name)
+    if not specs:
+        return None
+    out = {"part": str(raw.get("part", ""))[:40], "manufacturer": str(raw.get("manufacturer", ""))[:40],
+           "source": src, "title": pages[src]["title"], "specs": specs, "dropped": dropped}
+    emit({"type": "benchmark", **out})
+    return out

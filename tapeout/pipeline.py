@@ -69,11 +69,24 @@ def tapeout(idea: str, emit, *, pdk=None) -> dict:
          if findings.facts else (findings.note or ("no NEBIUS_API_KEY" if not llm.online()
                                                    else "no facts extracted")))
     emit({"type": "research", **findings.to_dict()})
+    reference = research.benchmark(idea, ledger=ledger, emit=emit)
+    if reference:
+        prov("scout:reference", True, models["nano"],
+             f"{reference['part']}: {len(reference['specs'])} figure(s) verified verbatim "
+             f"against {reference['source']}"
+             + (f"; {len(reference['dropped'])} discarded" if reference["dropped"] else ""))
+    brief = findings.brief()
+    if reference:
+        brief += ("\n\nCOMMERCIAL REFERENCE (a real op-amp used for this kind of product, "
+                  f"from {reference['source']}): {reference['manufacturer']} {reference['part']}: "
+                  + "; ".join(f"{x['name']} {x['text']}" for x in reference["specs"])
+                  + ". Where the fab's envelope allows, target comparable or better numbers, "
+                  "and say in 'why' how the block compares.")
 
     # 2-3. Architect, checked by the compiler.
     stage("architect", "running", model=models["ultra"])
     try:
-        plan = architect.design_chip(idea, findings.brief(), ledger=ledger, emit=emit)
+        plan = architect.design_chip(idea, brief, ledger=ledger, emit=emit)
     except llm.LLMError as exc:
         emit({"type": "log", "agent": "architect", "msg": f"model call failed: {exc}"})
         plan = architect.offline_plan(idea, f"model call failed: {str(exc)[:160]}")
@@ -153,6 +166,7 @@ def tapeout(idea: str, emit, *, pdk=None) -> dict:
         "idea": idea,
         "plan": plan.to_dict(),
         "research": findings.to_dict(),
+        "reference": reference,
         "analog": [a.to_dict() for a in analog],
         "digital": [d.to_dict() for d in digital],
         "datasheet": sheet,
@@ -248,6 +262,13 @@ def red_team(a: "fab.AnalogOutcome", pdk, *, ledger, emit):
         rounds.append(falsify.assess(snap, hyps, emit=emit, round_=r + 1))
         emit({"type": "assessment", "block": block.id, **rounds[-1].to_dict()})
 
+    # Shmoo plots: the original design against the one that survived, so the
+    # repair is visible as red cells inside the envelope turning green.
+    shmoos = [falsify.shmoo(snaps[0], "as first sized", emit=emit)]
+    if len(snaps) > 1:
+        shmoos.append(falsify.shmoo(snaps[-1], f"after {len(snaps) - 1} repair(s)",
+                                    emit=emit))
+
     # Keep the full trace (deck + ngspice log) for every run a finding or a
     # table cell links to; the rest keep their measurements only.
     linked = set()
@@ -275,6 +296,7 @@ def red_team(a: "fab.AnalogOutcome", pdk, *, ledger, emit):
         "rounds": [rd.to_dict() for rd in rounds],
         "repairs": repairs,
         "robustness": final.robustness,
+        "shmoos": shmoos,
         "open_violations": [row["claim"] for row in final.robustness
                             if row["status"] == "violated"],
         "runs": runs,

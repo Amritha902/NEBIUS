@@ -133,3 +133,25 @@ def test_repair_targets_the_worst_run_not_the_first_failure():
         {"claim": "gain", "status": "holds", "worst_run": "r0", "counterexamples": []},
     ], 0, 0)
     assert falsify.breaking_conditions(snap, a) == [awful]
+
+
+@needs_sky130
+def test_shmoo_marks_failing_claims_per_cell(monkeypatch):
+    monkeypatch.setattr(falsify, "SHMOO_VDD", (1.5, 1.8))
+    monkeypatch.setattr(falsify, "SHMOO_TEMP", (27.0, 125.0))
+    monkeypatch.setattr(falsify, "CORNERS", ("tt", "ss"))
+    t = topology.get("ota5t")
+    # Unmeetable on purpose: the plot must say which claim failed where.
+    spec = specparse.parse("op-amp with 30dB gain, 500MHz bandwidth, 1pF load").spec
+    sh = falsify.shmoo(falsify.Snapshot(t, t.defaults(), pdk.get("sky130"), 1e-12, spec), "t")
+    assert sh["sims"] == 8 and set(sh["cells"]) == {"tt", "ss"}
+    cells = sh["cells"]["tt"]
+    assert len(cells) == 4 and all("gbw" in c["fails"] for c in cells)
+    assert all(c["run"] for c in cells)
+
+
+@needs_sky130
+def test_offline_check_proves_the_simulation_path(capsys):
+    from tapeout import check
+    assert check.main(["--offline"]) == 0
+    assert "SIMULATION PATH READY" in capsys.readouterr().out

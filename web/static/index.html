@@ -137,6 +137,12 @@ del.flag{color:#b0102a;text-decoration:line-through}
 .tt{font-family:var(--mono);font-size:11.5px}
 .tt td,.tt th{padding:3px 6px;text-align:center}
 .tt .bad{color:#b0102a;font-weight:700}
+.shmoo{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.shmoo figure{margin:0}
+.shmoo figcaption{font:600 11px var(--mono);text-align:center;margin-top:2px}
+.shmoo-pair{display:grid;grid-template-columns:1fr;gap:10px}
+.shmoo-key{font:11px var(--mono);margin:6px 0 0;display:flex;gap:12px;flex-wrap:wrap}
+.shmoo-key i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
 .symrow{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
 .symrow>div{flex:1;min-width:220px}
 
@@ -186,6 +192,7 @@ del.flag{color:#b0102a;text-decoration:line-through}
           <div class="reason" id="reason"></div>
         </div>
         <div class="card"><h3>Red team <b id="rtstatus">idle</b></h3><div class="hyps" id="hyps"><span class="small" style="color:var(--faint)">The adversary starts once a block is sized.</span></div></div>
+        <div class="card" id="shmoocard" style="display:none"><h3>Shmoo plot <b id="shmootitle"></b></h3><div id="shmoolive"></div></div>
       </div>
     </div>
   </section>
@@ -372,6 +379,7 @@ const handlers = {
     setMode();
   },
   token(e) { token(e.agent, e.kind, e.text); },
+  benchmark(e) { say("scout", `Commercial reference: ${e.manufacturer} ${e.part} — ${e.specs.map(x => x.name + " " + x.text).join(", ")}. Every figure was found verbatim in ${e.source}${e.dropped.length ? `; ${e.dropped.length} figure(s) not found there were discarded` : ""}.`); },
   sources(e) { if (e.sources.length) say("scout", "Read " + e.sources.length + " sources:\n" + e.sources.map(s => "· " + s.title).join("\n")); },
   repair(e) { setAgent("compiler", "running", `rejected · round ${e.round}`); say("compiler", "Plan rejected — sent back to the architect:\n" + e.errors.map(x => "✗ " + x).join("\n")); },
   plan(e) {
@@ -420,6 +428,14 @@ const handlers = {
     v.className = "verdict " + e.verdict;
     v.textContent = (e.verdict === "survived" ? "✓ survived: " : (e.in_envelope ? "✗ BROKEN in envelope: " : "◆ limit found: ")) + e.statement;
   },
+  shmoo(e) {
+    $("#shmoocard").style.display = "block";
+    $("#shmootitle").textContent = e.label;
+    const box = $("#shmoolive");
+    if (S.shmooBlock !== S.rtBlock) { box.innerHTML = SHMOO_KEY; S.shmooBlock = S.rtBlock; }
+    box.querySelector(".shmoo-key").insertAdjacentHTML("beforebegin", shmooHTML(e));
+    say("redteam", `Shmoo plot (${e.label}): ${e.sims} forked simulations over supply × temperature × corner.`);
+  },
   grid(e) { say("redteam", `Brute-force check: ${e.runs} corner × supply × temperature runs across the whole envelope, to catch anything the hypotheses missed.`); },
   assessment(e) {
     const bad = e.robustness.filter(r => r.status === "violated");
@@ -438,6 +454,7 @@ const handlers = {
 
 function fmt(v, unit) {
   if (v == null || !isFinite(v)) return "n/a";
+  if (unit === "frac") return (v * 100).toFixed(0) + "% of VDD";
   if (unit === "dB" || unit === "deg") return v.toFixed(1) + (unit === "deg" ? "°" : " dB");
   const a = Math.abs(v), pre = [[1e9,"G"],[1e6,"M"],[1e3,"k"],[1,""],[1e-3,"m"],[1e-6,"µ"],[1e-9,"n"],[1e-12,"p"],[1e-15,"f"]];
   for (const [s, p] of pre) if (a >= s) return (v / s).toPrecision(3).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "") + " " + p + (unit || "");
@@ -460,6 +477,36 @@ function finish(r) {
   $("#sheetwrap").style.display = "block";
   $("#sheetwrap").scrollIntoView({behavior: "smooth"});
 }
+
+const CLAIM_LETTER = {gain: "G", gbw: "B", pm: "P", pwr: "W"};
+function shmooHTML(sh, opts = {}) {
+  const C = 22, L = 34, T = 6, ink = opts.ink || "#8b97a8";
+  const nv = sh.vdd.length, nt = sh.temp.length, W = L + nt * C + 4, H = T + nv * C + 26;
+  const ix = t => sh.temp.indexOf(t), iy = v => nv - 1 - sh.vdd.indexOf(v);
+  const env = sh.envelope;
+  const ex0 = sh.temp.findIndex(t => t >= env.temp[0]), ex1 = sh.temp.findLastIndex(t => t <= env.temp[1]);
+  const ey0 = sh.vdd.findIndex(v => v >= env.vdd[0] - 1e-9), ey1 = sh.vdd.findLastIndex(v => v <= env.vdd[1] + 1e-9);
+  let figs = "";
+  for (const corner of sh.corners) {
+    let g = "";
+    for (const c of sh.cells[corner]) {
+      const x = L + ix(c.temp) * C, y = T + iy(c.vdd) * C, bad = c.fails.length;
+      g += `<g class="runlink" data-run="${esc(c.run)}" style="cursor:pointer"><title>${corner} ${c.vdd} V ${c.temp} °C: ${bad ? "fails " + c.fails.join(", ") : "all claims hold"}</title>
+        <rect x="${x + 1}" y="${y + 1}" width="${C - 2}" height="${C - 2}" rx="3" fill="${bad ? "#d23a4a" : "#3d9a1a"}" data-run="${esc(c.run)}"/>
+        ${bad ? `<text x="${x + C / 2}" y="${y + C / 2 + 3.5}" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="JetBrains Mono" pointer-events="none">${c.fails.map(f => CLAIM_LETTER[f] || "?").join("")}</text>` : ""}</g>`;
+    }
+    const rx = L + ex0 * C, ry = T + (nv - 1 - ey1) * C;
+    g += `<rect x="${rx}" y="${ry}" width="${(ex1 - ex0 + 1) * C}" height="${(ey1 - ey0 + 1) * C}" fill="none" stroke="${opts.box || "#ffb340"}" stroke-width="2" stroke-dasharray="4 3" pointer-events="none"/>`;
+    sh.vdd.forEach((v, i) => g += `<text x="${L - 4}" y="${T + (nv - 1 - i) * C + C / 2 + 3}" text-anchor="end" font-size="8.5" fill="${ink}" font-family="JetBrains Mono">${v}</text>`);
+    sh.temp.forEach((t, i) => g += `<text x="${L + i * C + C / 2}" y="${T + nv * C + 11}" text-anchor="middle" font-size="8" fill="${ink}" font-family="JetBrains Mono">${t}</text>`);
+    g += `<text x="${L + nt * C / 2}" y="${H - 2}" text-anchor="middle" font-size="8.5" fill="${ink}" font-family="JetBrains Mono">°C</text><text x="2" y="${T + 8}" font-size="8.5" fill="${ink}" font-family="JetBrains Mono">V</text>`;
+    figs += `<figure><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="shmoo ${corner}">${g}</svg><figcaption style="color:${ink}">${corner}</figcaption></figure>`;
+  }
+  const fails = Object.values(sh.cells).flat().filter(c => c.fails.length);
+  const inside = fails.filter(c => c.vdd >= env.vdd[0] - 1e-9 && c.vdd <= env.vdd[1] + 1e-9 && c.temp >= env.temp[0] && c.temp <= env.temp[1]).length;
+  return `<div style="font:600 12px var(--mono);margin:4px 0;color:${opts.title || ink}">${esc(sh.label)} · design ${esc(sh.design_hash)} · <span style="color:${inside ? "#d23a4a" : "#3d9a1a"}">${inside} failing cell(s) inside the envelope</span>, ${fails.length - inside} outside</div><div class="shmoo">${figs}</div>`;
+}
+const SHMOO_KEY = `<div class="shmoo-key"><span><i style="background:#3d9a1a"></i>every claim holds</span><span><i style="background:#d23a4a"></i>a claim fails: G gain · B bandwidth · P phase margin · W power</span><span><i style="border:2px dashed #ffb340;width:8px;height:8px"></i>operating envelope</span></div>`;
 
 function runLink(id, label) { return `<span class="runlink" data-run="${esc(id)}">${esc(label || "#" + id)}</span>`; }
 
@@ -495,6 +542,7 @@ function renderSheet(r) {
         <td>${x.limits.length ? x.limits.map(esc).join("<br>") : '<span class="small">none found</span>'}</td></tr>`;
     }
     h += `</table>`;
+    if (c.shmoos?.length) h += `<h4>Shmoo plot — ${esc(c.title)}</h4><p class="small">Every cell is a forked simulation of the frozen design at that supply and temperature, for each sky130 process corner; click one for its run. The dashed box is the operating envelope.</p>` + c.shmoos.map(sh => shmooHTML(sh, {ink: "#59606b", title: "#14171c", box: "#a86400"})).join("") + SHMOO_KEY;
 
     // Falsification log
     h += `<h4>Falsification log — ${esc(c.title)}</h4>`;
@@ -514,12 +562,18 @@ function renderSheet(r) {
   }
 
   // Electrical characteristics (nominal)
+  const ref = r.reference, refOf = n => ref?.specs.find(x => x.name === n);
+  if (ref) h += `<h4>Commercial reference (found by Tavily)</h4><p>${esc(ref.manufacturer)} <b>${esc(ref.part)}</b> — <a href="${esc(ref.source)}" target="_blank" rel="noopener">${esc(ref.title || ref.source)}</a>. ${ref.specs.length} figure(s) shown below, each found verbatim in that page${ref.dropped.length ? `; ${ref.dropped.length} the model reported but the page does not contain were discarded` : ""}. The reference is a published datasheet, not simulated here.</p>`;
   for (const a of r.analog) {
-    h += `<h4>Electrical characteristics — ${esc(a.title)} (${esc(a.topology)}, typical)</h4><table><tr><th>Parameter</th><th>Target</th><th>Measured</th><th></th></tr>`;
+    const rc = ref ? "<th>Commercial ref.</th>" : "";
+    h += `<h4>Electrical characteristics — ${esc(a.title)} (${esc(a.topology)}, typical)</h4><table><tr><th>Parameter</th><th>Target</th><th>Measured</th>${rc}<th></th></tr>`;
     for (const t of a.targets) {
-      if (t.name === "load") { h += `<tr><td>Load capacitance</td><td class="num">${fmt(t.target, "F")}</td><td class="num">—</td><td class="small">test condition</td></tr>`; continue; }
-      h += `<tr><td>${NAMES[t.name] || t.name}${t.implied ? ' <span class="small">(implied)</span>' : ""}</td><td class="num">${t.relation} ${fmt(t.target, t.unit)}</td><td class="num">${fmt(t.measured, t.unit)}</td><td>${t.passed ? "✓" : "✗"}</td></tr>`;
+      const rv = ref ? `<td class="num">${refOf(t.name) ? esc(refOf(t.name).text) : "—"}</td>` : "";
+      if (t.name === "load") { h += `<tr><td>Load capacitance</td><td class="num">${fmt(t.target, "F")}</td><td class="num">—</td>${rv}<td class="small">test condition</td></tr>`; continue; }
+      const u = t.name === "vout_margin" ? "frac" : t.unit;
+      h += `<tr><td>${NAMES[t.name] || t.name}${t.implied ? ' <span class="small">(implied)</span>' : ""}</td><td class="num">${t.relation} ${fmt(t.target, u)}</td><td class="num">${fmt(t.measured, u)}</td>${rv}<td>${t.passed ? "✓" : "✗"}</td></tr>`;
     }
+    if (refOf("supply_current")) h += `<tr><td>Supply current</td><td class="num">—</td><td class="num">${fmt(a.measured.isup, "A")}</td><td class="num">${esc(refOf("supply_current").text)}</td><td class="small">${a.measured.isup != null && a.measured.isup < refOf("supply_current").value ? "lower than ref." : ""}</td></tr>`;
     const lanes = a.lanes;
     h += `</table><p class="small">Sized on ngspice with SkyWater 130nm models. Race: Nemotron ${lanes.nemotron.sims} sims${lanes.nemotron.solved ? " (won)" : ""}${lanes.nemotron.error ? " — " + esc(lanes.nemotron.error) : ""}; differential evolution ${lanes.evolution.sims} sims${lanes.evolution.solved ? " (won)" : ""}.${a.escalated ? " " + esc(a.escalated) + "." : ""}</p>
     <div class="symrow"><div>${a.bode_svg || ""}</div><div>${a.symbol_svg || ""}</div></div>
@@ -574,6 +628,8 @@ $("#dlnet").onclick = () => download(`${S.result.plan.part_number}.sp`, [...S.re
 // ---- run ------------------------------------------------------------------
 let es = null, timer = null;
 function start(replay) {
+  // The static GitHub Pages build has no server: every run is the recording.
+  if (window.__STATIC__ && !replay) replay = window.__STATIC__.replays[0];
   const idea = replay ? replay.idea : $("#idea").value.trim(); if (idea.length < 3) { $("#idea").focus(); return; }
   if (replay) $("#idea").value = idea;
   if (es) es.close();

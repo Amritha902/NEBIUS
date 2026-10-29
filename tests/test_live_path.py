@@ -116,3 +116,30 @@ def test_scout_keeps_only_citations_it_retrieved(live, monkeypatch):
     f = research.scout("a PPG front-end", ledger=llm.Ledger(), emit=lambda e: None)
     assert f.queries == ["PPG signal bandwidth amplitude", "PPG AFE power"]
     assert [x.source for x in f.facts] == ["https://example.org/ppg"]   # invented URL dropped
+
+
+def _page(url="https://example.org/opa", text="Gain bandwidth: 1.5 MHz. Quiescent current 8 µA per channel."):
+    return [{"title": "OPA-TEST datasheet", "url": url, "content": text}]
+
+
+def test_reference_keeps_only_figures_found_verbatim(live, monkeypatch):
+    from tapeout import research
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
+    monkeypatch.setattr(research, "search", lambda q, max_results=5: _page())
+    ref = research.benchmark("a PPG front-end", ledger=llm.Ledger(), emit=lambda e: None)
+    assert ref["part"] == "OPA-TEST" and ref["source"] == "https://example.org/opa"
+    assert {(x["name"], x["unit"]) for x in ref["specs"]} == {("gbw", "Hz"), ("supply_current", "A")}
+    assert ref["dropped"] == ["140 dB"]          # the model said it; the page doesn't
+
+
+def test_reference_without_any_verified_figure_is_none(live, monkeypatch):
+    from tapeout import research
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
+    monkeypatch.setattr(research, "search", lambda q, max_results=5: _page(text="No numbers here."))
+    assert research.benchmark("x", ledger=llm.Ledger(), emit=lambda e: None) is None
+
+
+def test_reference_needs_a_key(monkeypatch):
+    from tapeout import research
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    assert research.benchmark("x", ledger=llm.Ledger(), emit=lambda e: None) is None

@@ -6,7 +6,8 @@ a final usage chunk -- and answers each agent's prompt with a plausible reply.
 It cannot tell you whether Nemotron reasons well; it tells you whether every
 byte of the integration around it works.
 
-    python tests/mock_tokenfactory.py 8765    # then NEBIUS_BASE_URL=http://127.0.0.1:8765/v1
+    python tests/mock_tokenfactory.py 8765
+    # then NEBIUS_BASE_URL=http://127.0.0.1:8765/v1 TAVILY_URL=http://127.0.0.1:8765/search
 """
 
 from __future__ import annotations
@@ -71,6 +72,13 @@ def reply_for(body: dict) -> tuple[str, str, bool]:
             vals[name] = math.sqrt(lo * hi) * (1.3 ** (len(CALLS) % 5 - 2))
         return "", json.dumps({"reasoning": "Raise ibias to lift gm; widen the input pair.",
                                "values": vals}), False
+    if "commercial operational amplifiers" in user:
+        urls = re.findall(r"URL: (\S+)", user)
+        return "", json.dumps({"part": "OPA-TEST", "manufacturer": "Example Corp",
+                               "source": urls[0] if urls else "x",
+                               "specs": [{"name": "gbw", "text": "1.5 MHz"},
+                                         {"name": "supply_current", "text": "8 µA"},
+                                         {"name": "gain", "text": "140 dB"}]}), False
     if "plan web searches" in user:
         return "", '{"queries": ["PPG signal bandwidth amplitude", "PPG AFE power"]}', False
     if "Extract up to 6" in user:
@@ -101,6 +109,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        if self.path.rstrip("/").endswith("/search"):          # Tavily
+            if "op amp datasheet" in body.get("query", ""):
+                return self._json({"results": [{
+                    "title": "OPA-TEST micropower op amp datasheet",
+                    "url": "https://example.org/opa-test",
+                    "content": "OPA-TEST: Gain bandwidth: 1.5 MHz. Quiescent current 8 µA."}]})
+            return self._json({"results": [{
+                "title": "PPG signal basics", "url": "https://example.org/ppg",
+                "content": "The pulsatile AC part of a PPG signal is about 1 mV, 0.5-5 Hz."}]})
         if self.headers.get("Authorization") != "Bearer test-key":
             return self._json({"error": "bad key"}, 401)
         if body["model"] not in MODELS:

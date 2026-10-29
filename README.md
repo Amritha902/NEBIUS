@@ -15,8 +15,9 @@ checks the adversary's work. Every claim that breaks inside the operating
 envelope goes back to the design team. They re-size the circuit, and the red
 team attacks the repaired design again.
 
-What comes out is a datasheet with a **robustness envelope** and a
-**falsification log**. For every claim it records where the claim holds, where
+What comes out is a datasheet with a **robustness envelope**, a
+**falsification log**, and a **shmoo plot**: pass/fail over supply ×
+temperature for every process corner, before and after the repair. For every claim it records where the claim holds, where
 it breaks, and the simulation deck and ngspice log proving it. You can click
 any counterexample on the page.
 
@@ -55,7 +56,7 @@ Nemotron's; every simulation is real). The claim is a two-stage op-amp with
 
 | agent | model (Token Factory) | job |
 | --- | --- | --- |
-| **Scout** | Nemotron **Nano** + **Tavily** | Writes search queries and pulls numeric requirements (signal bandwidth, amplitude, power budget) out of the results. A fact whose URL was not actually retrieved is dropped. |
+| **Scout** | Nemotron **Nano** + **Tavily** | Writes search queries and pulls numeric requirements (signal bandwidth, amplitude, power budget) out of the results. A fact whose URL was not actually retrieved is dropped. It also finds a **commercial op-amp** for the same job; that part's figures become a "Commercial ref." column, each kept only if it appears verbatim in the retrieved page. |
 | **Architect** | Nemotron **Ultra** | Turns the product into a chip plan: amplifier specs as sentences with units, plus logic cells from a fixed menu of 20. It is told the fab's measured envelope. |
 | **Compiler** | deterministic | Parses every spec and checks feasibility. Rejections go back to the model, which repairs its own plan (Super takes over for repair rounds). This is the coding-agent loop, with the spec parser playing the test suite. |
 | **Fab** | Nemotron **Super** vs. differential evolution | The two race to size each amplifier, each against its own simulation counter. Nemotron reads measured gain, GBW, PM and power, explains its next move, and proposes sizes. The first to meet spec stops the other. Logic blocks are proved against their full truth table by transient simulation. |
@@ -155,6 +156,9 @@ cp .env.example .env            # add NEBIUS_API_KEY (and TAVILY_API_KEY)
 set -a; . ./.env; set +a; .venv/bin/uvicorn web.server:app --port 8010
 ```
 
+No keys? `python -m tapeout.check --offline` proves ngspice, the sky130
+corner models and a real corner simulation in about 2 seconds.
+
 Before a demo, prove the live path in about 30 seconds. This lists the models
 your key can see, resolves the three tiers, makes one call to each, checks
 Tavily, and exits non-zero on any failure:
@@ -169,6 +173,16 @@ the terminal:
 ```bash
 .venv/bin/tapeout "a wake-on-sound smart doorbell" --json run.json
 ```
+
+**Static demo, no server at all.** This builds a self-contained replay page
+for GitHub Pages: no cold start, no credits, labelled `REPLAY`.
+
+```bash
+python scripts/export_static.py
+```
+
+Enable it under Settings → Pages → Deploy from branch `main`, folder `/docs`.
+It then serves at `https://<user>.github.io/NEBIUS/demo/`.
 
 **Instant replay for visitors.** A full run takes 3–5 minutes and spends
 model credits. Record one run, and the hosted demo offers
@@ -238,7 +252,7 @@ A dropped stream is now an error that gets retried, never a short answer.
 ### Tests
 
 ```bash
-TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 335 tests: engine, compiler, auditor, falsifier, servo, live path vs. mock
+TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 340 tests: engine, compiler, auditor, falsifier, servo, live path vs. mock
 ```
 
 ---

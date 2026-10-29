@@ -439,6 +439,37 @@ def grid(snap: Snapshot, *, emit, round_: int) -> list[Run]:
     return runs
 
 
+SHMOO_VDD = (1.5, 1.6, 1.71, 1.8, 1.89, 2.0)     # envelope edges on the grid
+SHMOO_TEMP = (-40.0, 27.0, 85.0, 125.0)     # the grid's temperatures reuse its runs
+
+
+def shmoo(snap: Snapshot, label: str, *, emit=None) -> dict:
+    """Pass/fail over supply x temperature, per process corner.
+
+    The chart test floors draw for real silicon: each cell is one forked
+    simulation, marked with the claims that failed there. The operating
+    envelope is drawn on top, so a red cell inside it is a broken promise
+    and a red cell outside it is a published limit.
+    """
+    conds = [Condition(c, v, t, snap.cl, 0.5)
+             for c in CORNERS for v in SHMOO_VDD for t in SHMOO_TEMP]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        runs = list(pool.map(snap.simulate, conds))
+    claims = [m.name for m in claims_of(snap.spec)]
+    cells = {}
+    for cond, run in zip(conds, runs):
+        cells.setdefault(cond.corner, []).append({
+            "vdd": cond.vdd, "temp": cond.temp, "run": run.id,
+            "fails": [c for c in claims if not snap.holds(c, run)],
+        })
+    out = {"label": label, "design_hash": snap.hash, "vdd": list(SHMOO_VDD),
+           "temp": list(SHMOO_TEMP), "corners": list(CORNERS), "cells": cells,
+           "envelope": ENVELOPE, "sims": len(conds)}
+    if emit:
+        emit({"type": "shmoo", **out})
+    return out
+
+
 # ---------------------------------------------------------------------------
 
 
