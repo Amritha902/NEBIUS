@@ -120,6 +120,8 @@ here is ours".
 - No silent fallbacks: if Nemotron didn't do something, the page says so.
 - 340 tests. CI builds the container and proves a sky130 simulation inside
   it.
+- A recorded clean-room run (fresh clone → 340 tests passing in under 2
+  minutes) is in `docs/CLEANROOM.md`.
 - A judge can verify the simulation path with no keys at all:
   `python -m tapeout.check --offline`. The static replay page needs nothing.
 

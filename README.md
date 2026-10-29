@@ -251,6 +251,9 @@ A dropped stream is now an error that gets retried, never a short answer.
 
 ### Tests
 
+A recorded clean-room run (fresh clone, fresh venv, no keys) is in
+[docs/CLEANROOM.md](docs/CLEANROOM.md).
+
 ```bash
 TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 340 tests: engine, compiler, auditor, falsifier, servo, live path vs. mock
 ```
