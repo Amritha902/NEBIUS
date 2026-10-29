@@ -169,6 +169,7 @@ del.flag{color:#b0102a;text-decoration:line-through}
       <button class="go" id="go">▶ Tape out</button>
     </div>
     <div class="examples" id="examples"></div>
+    <div id="replaybox" style="display:none;margin-top:14px"><button class="ex" id="replaybtn" style="border-color:#33415a;color:var(--text)"></button> <span class="small" style="color:var(--faint);font-size:12px" id="replaynote"></span></div>
   </section>
 
   <section id="live" style="display:none">
@@ -224,6 +225,14 @@ const EXAMPLES = [
   "a hearing-aid microphone preamp",
 ];
 for (const e of EXAMPLES) $("#examples").append(el("button", {class: "ex", onclick: () => { $("#idea").value = e; start(); }}, e));
+fetch("/api/replays").then(r => r.json()).then(list => {
+  if (!list.length) return;
+  const r = list[0];
+  $("#replaybtn").textContent = `⏵ Watch a recorded ${r.online ? "live Nemotron" : "offline"} run in ~40 s`;
+  $("#replaynote").textContent = `“${r.idea}” · the real event stream, time-compressed; every trace stays clickable`;
+  $("#replaybtn").onclick = () => start(r);
+  $("#replaybox").style.display = "block";
+}).catch(() => {});
 
 const AGENTS = [
   ["scout", "Scout", "Tavily + Nemotron Nano"],
@@ -236,7 +245,7 @@ const AGENTS = [
 
 let S = {};      // state for the current run
 function reset() {
-  S = {races: {}, raceOrder: [], cur: null, hyps: {}, hypOrder: [], msgs: {}, lastAgent: null, result: null, t0: Date.now(), plan: null};
+  S = {replay: null, races: {}, raceOrder: [], cur: null, hyps: {}, hypOrder: [], msgs: {}, lastAgent: null, result: null, t0: Date.now(), plan: null};
   $("#flow").innerHTML = "";
   for (const [id, name, model] of AGENTS) {
     $("#flow").append(el("div", {class: "agent" + (id === "redteam" ? " red" : ""), id: "ag-" + id},
@@ -252,9 +261,10 @@ function reset() {
 
 function setMode() {
   const m = $("#mode");
-  if (!S.online) { m.className = "mode fallback"; m.innerHTML = `OFFLINE FALLBACK <small>no NEBIUS_API_KEY — built-in plan and textbook hypotheses stand in for Nemotron; every simulation is still real</small>`; return; }
-  if (S.fallbacks?.length) { m.className = "mode fallback"; m.innerHTML = `LIVE NEMOTRON · ${S.fallbacks.length} FALLBACK(S) <small>${S.fallbacks.map(f => esc(f.agent + ": " + f.detail)).join(" · ")}</small>`; return; }
-  m.className = "mode"; m.innerHTML = `LIVE NEMOTRON · ACTIVE <small>every agent call goes to Nebius Token Factory</small>`;
+  const rp = S.replay ? `REPLAY · recorded ${new Date(S.replay.recorded * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC · ` : "";
+  if (!S.online) { m.className = "mode fallback"; m.innerHTML = `${rp}OFFLINE FALLBACK <small>no NEBIUS_API_KEY — built-in plan and textbook hypotheses stand in for Nemotron; every simulation is still real</small>`; return; }
+  if (S.fallbacks?.length) { m.className = "mode fallback"; m.innerHTML = `${rp}LIVE NEMOTRON · ${S.fallbacks.length} FALLBACK(S) <small>${S.fallbacks.map(f => esc(f.agent + ": " + f.detail)).join(" · ")}</small>`; return; }
+  m.className = "mode"; m.innerHTML = `${rp}LIVE NEMOTRON · ACTIVE <small>${S.replay ? "recorded from Nebius Token Factory" : "every agent call goes to Nebius Token Factory"}</small>`;
 }
 
 function setAgent(id, status, text) {
@@ -266,8 +276,10 @@ function setAgent(id, status, text) {
 // ---- console -----------------------------------------------------------
 function bubble(agent, fresh) {
   if (!fresh && S.lastAgent === agent && S.msgs[agent]) return S.msgs[agent];
-  const who = {scout:"Scout · Nemotron Nano", architect:"Architect · Nemotron Ultra", compiler:"Compiler", sizer:"Fab", fab:"Fab",
+  let who = {scout:"Scout · Nemotron Nano", architect:"Architect · Nemotron Ultra", compiler:"Compiler", sizer:"Fab", fab:"Fab",
                redteam:"Red team · Nemotron Ultra", writer:"Writer · Nemotron Nano"}[agent] || agent;
+  // Never credit a model with work a stand-in did.
+  if (!S.online) who = who.replace(/ · Nemotron \w+/, " · offline stand-in");
   const b = el("div", {class: "msg " + agent}, el("span", {class: "who"}, who));
   $("#console").append(b); S.msgs[agent] = b; S.lastAgent = agent;
   return b;
@@ -332,6 +344,7 @@ function hypCard(h, round) {
 
 // ---- event handling ------------------------------------------------------
 const handlers = {
+  replay(e) { S.replay = e; },
   hello(e) {
     S.online = e.online; S.fallbacks = [];
     setMode();
@@ -560,18 +573,19 @@ $("#dlnet").onclick = () => download(`${S.result.plan.part_number}.sp`, [...S.re
 
 // ---- run ------------------------------------------------------------------
 let es = null, timer = null;
-function start() {
-  const idea = $("#idea").value.trim(); if (idea.length < 3) { $("#idea").focus(); return; }
+function start(replay) {
+  const idea = replay ? replay.idea : $("#idea").value.trim(); if (idea.length < 3) { $("#idea").focus(); return; }
+  if (replay) $("#idea").value = idea;
   if (es) es.close();
   reset(); $("#live").style.display = "block"; $("#go").disabled = true;
   $("#live").scrollIntoView({behavior: "smooth"});
   clearInterval(timer); timer = setInterval(() => { $("#elapsed").textContent = Math.round((Date.now() - S.t0) / 1000) + "s"; }, 500);
-  es = new EventSource("/api/tapeout?idea=" + encodeURIComponent(idea));
+  es = new EventSource(replay ? "/api/replay?name=" + encodeURIComponent(replay.name) : "/api/tapeout?idea=" + encodeURIComponent(idea));
   es.onmessage = m => { const e = JSON.parse(m.data); (handlers[e.type] || (() => {}))(e); };
   es.addEventListener("end", () => { es.close(); clearInterval(timer); $("#go").disabled = false; });
   es.onerror = () => { es.close(); clearInterval(timer); $("#go").disabled = false; if (!S.result) say("compiler", "Connection closed. If the fab was busy, try again in a minute."); };
 }
-$("#go").onclick = start;
+$("#go").onclick = () => start();
 $("#idea").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) start(); });
 
 fetch("/api/status").then(r => r.json()).then(s => {

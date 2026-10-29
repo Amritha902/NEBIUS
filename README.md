@@ -170,6 +170,16 @@ the terminal:
 .venv/bin/tapeout "a wake-on-sound smart doorbell" --json run.json
 ```
 
+**Instant replay for visitors.** A full run takes 3–5 minutes and spends
+model credits. Record one run, and the hosted demo offers
+"Watch a recorded run in ~40 s". It replays the exact event stream,
+time-compressed and labelled `REPLAY`, with every trace still clickable. Live
+recordings are listed before offline ones:
+
+```bash
+.venv/bin/tapeout "a heart-rate (PPG) monitor front-end for a fitness band" --record web/replays/ppg-live.jsonl
+```
+
 **Nothing falls back silently.** A banner reads `LIVE NEMOTRON · ACTIVE`, or
 names each fallback and its reason. Every agent card is tagged
 `LIVE NEMOTRON` or `FALLBACK`, and the datasheet carries a provenance table
@@ -228,7 +238,7 @@ A dropped stream is now an error that gets retried, never a short answer.
 ### Tests
 
 ```bash
-TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 331 tests: engine, compiler, auditor, falsifier, servo, live path vs. mock
+TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 335 tests: engine, compiler, auditor, falsifier, servo, live path vs. mock
 ```
 
 ---
