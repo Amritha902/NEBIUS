@@ -1,45 +1,24 @@
 # Three-minute demo script
 
-Record at 1080p with the browser at ~110% zoom. Run `python -m tapeout.check`
-first, and record only after it prints `LIVE PATH READY`. Keep a recording of
-a clean full run as a backup.
+**Before recording**
+- Run `python -m tapeout.check` and record only after it prints `LIVE PATH READY`.
+- Record at 1080p with the browser at ~110% zoom, with audio.
+- Say "NVIDIA Nemotron" and "Nebius Token Factory" out loud at least twice
+  each.
+- Upload to YouTube early: processing can take hours.
+- Keep a clean recorded run as a backup. The static replay page
+  (`docs/demo/`) works with no server at all.
 
-**0:00–0:20: the trust problem.**
-"LLM agents can draft circuits now. The hard part is believing the datasheet.
-Every demo you'll see shows a circuit that passes. This one shows you where
-the circuit breaks, and proves it with a simulation log."
+| time | on screen | say |
+| --- | --- | --- |
+| 0:00–0:15 | Title page | "Every AI chip demo shows you a circuit that passes. Tapeout shows you where it breaks, and proves it with a simulation log." |
+| 0:15–0:40 | Click the PPG example. Show the green `LIVE NEMOTRON · ACTIVE` banner and the model ids on the agent cards. | "Six agents on **NVIDIA Nemotron**, served by **Nebius Token Factory**: Ultra plans and attacks, Super sizes, Nano researches and writes. Tavily grounds it in real datasheets." |
+| 0:40–1:10 | Scout's commercial-reference line; the race chart with Nemotron's reasoning under it. | "It found the op-amp a product team would buy, kept only the numbers it could find verbatim in that datasheet, and is now sizing ours on SkyWater 130nm." |
+| 1:10–1:40 | Red-team cards turning red: phase margin and bandwidth broken at the corners. | "Nemotron predicts where each claim should fail. The simulator proves it, and a corner grid checks the predictions." |
+| 1:40–2:05 | The shmoo plot: before (red inside the dashed box) vs. after repair (green). Click one red cell to open its deck and ngspice log. | "Each cell is a real simulation. Red inside the box was a broken promise. After repair it's green, and the limits outside the box are published, not hidden." |
+| 2:05–2:25 | The **provenance table**. Hold it for at least 8 seconds. | "Every agent declares whether it ran live on Nemotron. Nothing falls back silently." |
+| 2:25–2:50 | The robustness table and falsification log. Click a number to open its trace. | "One bug it caught was in our own testbench: a 5% supply droop looked like 63 dB collapsing to 28. A DC servo fixed it." |
+| 2:50–3:00 | End card: repo URL, demo URL, MIT. | "Limits proven, not claimed. **NVIDIA Nemotron** on **Nebius Token Factory**." |
 
-**0:20–0:50: one click.**
-Click the "heart-rate (PPG) monitor" example. Point at the green banner,
-`LIVE NEMOTRON · ACTIVE`, and the tags on each agent card. Narrate as it runs:
-
-- the scout's Tavily facts
-- Ultra's plan, and a compiler rejection being repaired if one shows
-- the race chart: Nemotron's reasoning line against the evolutionary search
-
-**0:50–1:40: the red team breaks it.**
-Read one hypothesis card aloud: a mechanism, then red probe squares. From the
-offline reference run (a live run will differ):
-
-- **Round 1:** phase margin fails at ff (47.4°); the grid finds 23.2° at
-  fs / 1.89 V / 85 °C; GBW collapses to 76 kHz at sf / 1.71 V / −40 °C.
-- **Repair 1, then round 2:** the grid catches what the hypotheses missed:
-  gain 59.7 dB and PM 54.6°.
-- **Repair 2:** every earlier counterexample is now a regression test.
-- **Round 3:** nothing left to break inside the envelope.
-
-**1:40–2:20: the artifact.**
-Scroll to the Robustness Envelope table and click a run id. The modal shows
-the exact SPICE deck (corner include, supply, the servo loop) and the raw
-ngspice output. This is the key shot; rehearse it until it's automatic. Then:
-
-- the Falsification Log: rounds, verdicts, repairs
-- the Provenance table: which model produced what
-
-**2:20–3:00: why it matters.**
-Tell the testbench story: open-loop decks made a 5% supply droop look like
-63 → 28 dB, so the falsifier would have published fake failures. A DC servo
-fixed it, and the real gain ceiling turned out to be ~82 dB.
-
-Close on the datasheet: "Limits proven, not claimed. Every number re-runs from
-one command."
+A live run gives different numbers from any earlier run. Narrate what's on
+screen; don't read numbers from this script.
