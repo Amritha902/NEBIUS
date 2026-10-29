@@ -20,6 +20,7 @@ jobs:
       - run: docker build -t tapeout .
       - name: smoke-test the running container (offline mode)
         run: |
-          docker run -d -p 8010:8010 --name t tapeout
+          docker run -d -p 8010:8010 --name tapeout-smoke tapeout
           for i in $(seq 30); do curl -sf localhost:8010/healthz && break; sleep 2; done
-          curl -sf localhost:8010/api/status
+          curl -sf localhost:8010/api/status || { docker logs tapeout-smoke; exit 1; }
+          curl -sf localhost:8010/ | grep -q "Tape out"
