@@ -103,6 +103,7 @@ class Ledger:
 
 
 MODELS: dict[str, str] = {}
+AVAILABLE: list[str] = []        # what /v1/models returned, for the live check
 _discovered = False
 _discover_lock = threading.Lock()
 
@@ -125,12 +126,18 @@ def discover() -> dict[str, str]:
             except (urllib.error.URLError, OSError, ValueError, KeyError):
                 ids = []
 
+        # Token Factory ids are case-sensitive; resolve any pinned or default
+        # id against the live list so "Nemotron-3-Ultra" and "nemotron-3-ultra"
+        # both reach the model that exists.
+        exact = {i.lower(): i for i in ids}
         for tier in ("ultra", "super", "nano"):
             pinned = os.environ.get(f"TAPEOUT_MODEL_{tier.upper()}")
             if pinned:
-                MODELS[tier] = pinned
+                MODELS[tier] = exact.get(pinned.lower(), pinned)
                 continue
-            MODELS[tier] = _pick(ids, tier) or DEFAULTS[tier]
+            MODELS[tier] = (_pick(ids, tier) or exact.get(DEFAULTS[tier].lower())
+                            or DEFAULTS[tier])
+        AVAILABLE[:] = ids
 
         # A key without Ultra access still gets a working architect.
         if ids and MODELS["ultra"] not in ids and MODELS["super"] in ids:
@@ -212,10 +219,50 @@ def chat(
                 continue
             if exc.code not in (429, 500, 502, 503, 504):
                 break
-        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+        except (urllib.error.URLError, OSError, TimeoutError, LLMError) as exc:
             last_err = LLMError(f"{model}: {exc}")
         time.sleep(1.5 * (attempt + 1))
     raise last_err or LLMError("request failed")
+
+
+class ThinkSplitter:
+    """Separates inline <think>...</think> from the answer in a token stream.
+
+    Tags arrive split across chunks ("<thi" + "nk>"), so a tail that could be
+    the start of a tag is held back until the next chunk decides it.
+    """
+
+    OPEN, CLOSE = "<think>", "</think>"
+
+    def __init__(self):
+        self.in_tag = False
+        self.buf = ""
+
+    def feed(self, chunk: str) -> list[tuple[str, str]]:
+        self.buf += chunk
+        out: list[tuple[str, str]] = []
+        while self.buf:
+            tag = self.CLOSE if self.in_tag else self.OPEN
+            kind = "think" if self.in_tag else "text"
+            i = self.buf.find(tag)
+            if i >= 0:
+                if i:
+                    out.append((kind, self.buf[:i]))
+                self.buf = self.buf[i + len(tag):]
+                self.in_tag = not self.in_tag
+                continue
+            # Hold back the longest suffix that is a prefix of the tag.
+            hold = next((k for k in range(min(len(tag) - 1, len(self.buf)), 0, -1)
+                         if tag.startswith(self.buf[-k:])), 0)
+            emit, self.buf = self.buf[:len(self.buf) - hold], self.buf[len(self.buf) - hold:]
+            if emit:
+                out.append((kind, emit))
+            break
+        return out
+
+    def flush(self) -> list[tuple[str, str]]:
+        rest, self.buf = self.buf, ""
+        return [("think" if self.in_tag else "text", rest)] if rest else []
 
 
 def _stream(data, tier, ledger, on_delta, timeout, t0) -> tuple[str, str]:
@@ -228,9 +275,16 @@ def _stream(data, tier, ledger, on_delta, timeout, t0) -> tuple[str, str]:
             "Accept": "text/event-stream",
         },
     )
-    text, think = [], []
+    parts = {"text": [], "think": []}
     usage = {}
-    in_tag = False
+    splitter = ThinkSplitter()
+    finished = False
+
+    def out(kind, piece):
+        parts[kind].append(piece)
+        if on_delta:
+            on_delta(kind, piece)
+
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         for raw in resp:
             line = raw.decode("utf-8", errors="replace").strip()
@@ -238,45 +292,31 @@ def _stream(data, tier, ledger, on_delta, timeout, t0) -> tuple[str, str]:
                 continue
             payload = line[5:].strip()
             if payload == "[DONE]":
+                finished = True
                 break
             try:
                 chunk = json.loads(payload)
             except ValueError:
-                continue
+                continue                       # one bad chunk is not the reply
             if chunk.get("usage"):
                 usage = chunk["usage"]
-            for choice in chunk.get("choices", []):
+            for choice in chunk.get("choices") or []:
+                if choice.get("finish_reason"):
+                    finished = True
                 delta = choice.get("delta") or {}
                 r = delta.get("reasoning_content") or delta.get("reasoning")
                 if r:
-                    think.append(r)
-                    if on_delta:
-                        on_delta("think", r)
-                c = delta.get("content")
-                if not c:
-                    continue
-                # Inline <think> tags, split across chunks.
-                while c:
-                    if in_tag:
-                        end = c.find("</think>")
-                        part, c = (c, "") if end < 0 else (c[:end], c[end + 8:])
-                        if end >= 0:
-                            in_tag = False
-                        if part:
-                            think.append(part)
-                            if on_delta:
-                                on_delta("think", part)
-                    else:
-                        start = c.find("<think>")
-                        part, c = (c, "") if start < 0 else (c[:start], c[start + 7:])
-                        if start >= 0:
-                            in_tag = True
-                        if part:
-                            text.append(part)
-                            if on_delta:
-                                on_delta("text", part)
+                    out("think", r)
+                if delta.get("content"):
+                    for kind, piece in splitter.feed(delta["content"]):
+                        out(kind, piece)
+    for kind, piece in splitter.flush():
+        out(kind, piece)
+    if not finished:
+        # A dropped connection must not pass for a short answer.
+        raise LLMError("stream ended before [DONE] or a finish_reason")
 
-    answer = THINK.sub("", "".join(text)).strip()
+    answer = THINK.sub("", "".join(parts["text"])).strip()
     if ledger is not None:
         ledger.add(
             tier,
@@ -284,7 +324,7 @@ def _stream(data, tier, ledger, on_delta, timeout, t0) -> tuple[str, str]:
             int(usage.get("completion_tokens", 0)),
             time.perf_counter() - t0,
         )
-    return answer, "".join(think)
+    return answer, "".join(parts["think"])
 
 
 def extract_json(text: str) -> dict:

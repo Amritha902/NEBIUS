@@ -98,6 +98,12 @@ h1 em{font-style:normal;background:linear-gradient(90deg,var(--red),var(--amber)
 .verdict.broken,.verdict.boundary{color:var(--red)}.verdict.survived{color:var(--nv2)}
 .round-tag{font:600 10px var(--mono);padding:2px 6px;border-radius:4px;background:#2a1418;color:var(--red)}
 .round-tag.r2,.round-tag.r3{background:#16240a;color:var(--nv2)}
+.mode{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:10px 14px;border-radius:12px;font:600 13px var(--mono);border:1px solid #2f4a0a;background:#0d1606;color:var(--nv2)}
+.mode.fallback{border-color:#4a3a14;background:#171106;color:var(--amber)}
+.mode small{font-weight:400;color:var(--dim)}
+.tag{font:700 9.5px var(--mono);padding:2px 6px;border-radius:4px;margin-left:auto;letter-spacing:.04em}
+.tag.live{background:#1d3306;color:var(--nv2)}.tag.fb{background:#3a2a08;color:var(--amber)}
+.badge.live{background:#e3f4d2;color:#2c6a00}.badge.fb{background:#fff0d6;color:#8a5200}
 .banner{display:none;margin:12px 0;padding:12px 14px;border-radius:12px;border:1px solid #5a1f27;background:#1a0b0e;color:#ffc2c8;font-size:14px}
 .banner.ok{border-color:#2f4a0a;background:#0d1606;color:#d5f7a8}
 
@@ -166,6 +172,7 @@ del.flag{color:#b0102a;text-decoration:line-through}
   </section>
 
   <section id="live" style="display:none">
+    <div class="mode" id="mode">connecting…</div>
     <div class="flow" id="flow"></div>
     <div class="banner" id="banner"></div>
     <div class="grid">
@@ -233,7 +240,7 @@ function reset() {
   $("#flow").innerHTML = "";
   for (const [id, name, model] of AGENTS) {
     $("#flow").append(el("div", {class: "agent" + (id === "redteam" ? " red" : ""), id: "ag-" + id},
-      el("div", {class: "n"}, el("span", {class: "dot"}), name),
+      el("div", {class: "n"}, el("span", {class: "dot"}), name, el("span", {class: "tag", id: "agt-" + id})),
       el("div", {class: "m", id: "agm-" + id}, model),
       el("div", {class: "s", id: "ags-" + id}, "")));
   }
@@ -241,6 +248,13 @@ function reset() {
   $("#race").innerHTML = ""; $("#reason").textContent = ""; $("#simcount").textContent = "";
   $("#banner").style.display = "none"; $("#sheetwrap").style.display = "none";
   $("#planname").textContent = ""; $("#plantag").textContent = ""; $("#rtstatus").textContent = "idle";
+}
+
+function setMode() {
+  const m = $("#mode");
+  if (!S.online) { m.className = "mode fallback"; m.innerHTML = `OFFLINE FALLBACK <small>no NEBIUS_API_KEY — built-in plan and textbook hypotheses stand in for Nemotron; every simulation is still real</small>`; return; }
+  if (S.fallbacks?.length) { m.className = "mode fallback"; m.innerHTML = `LIVE NEMOTRON · ${S.fallbacks.length} FALLBACK(S) <small>${S.fallbacks.map(f => esc(f.agent + ": " + f.detail)).join(" · ")}</small>`; return; }
+  m.className = "mode"; m.innerHTML = `LIVE NEMOTRON · ACTIVE <small>every agent call goes to Nebius Token Factory</small>`;
 }
 
 function setAgent(id, status, text) {
@@ -319,6 +333,8 @@ function hypCard(h, round) {
 // ---- event handling ------------------------------------------------------
 const handlers = {
   hello(e) {
+    S.online = e.online; S.fallbacks = [];
+    setMode();
     for (const [k, v] of Object.entries({scout: e.models.nano, architect: e.models.ultra, fab: e.models.super, redteam: e.models.ultra, writer: e.models.nano}))
       $("#agm-" + k).textContent = v.split("/").pop();
     if (!e.online) say("compiler", "Offline mode: NEBIUS_API_KEY is not set, so built-in plans and textbook failure mechanisms stand in for the Nemotron agents. Every simulation still runs for real.", "think");
@@ -336,6 +352,12 @@ const handlers = {
     }
   },
   log(e) { say(e.agent, e.msg); },
+  provenance(e) {
+    const id = e.agent.split(":")[0], t = $("#agt-" + id);
+    if (t && !(t.classList.contains("fb"))) { t.className = "tag " + (e.live ? "live" : "fb"); t.textContent = e.live ? "LIVE NEMOTRON" : "FALLBACK"; }
+    if (!e.live) { S.fallbacks.push(e); say(id === "fab" ? "fab" : id, `FALLBACK — ${e.agent}: ${e.detail}`); }
+    setMode();
+  },
   token(e) { token(e.agent, e.kind, e.text); },
   sources(e) { if (e.sources.length) say("scout", "Read " + e.sources.length + " sources:\n" + e.sources.map(s => "· " + s.title).join("\n")); },
   repair(e) { setAgent("compiler", "running", `rejected · round ${e.round}`); say("compiler", "Plan rejected — sent back to the architect:\n" + e.errors.map(x => "✗ " + x).join("\n")); },
@@ -442,7 +464,7 @@ function renderSheet(r) {
 
   let h = `<div style="display:flex;justify-content:space-between;gap:20px;align-items:flex-start;flex-wrap:wrap">
     <div><div class="pn">${esc(p.part_number)} · ${esc(r.pdk)} · ${r.vdd} V</div><h2>${esc(p.name)}</h2><div class="tl">${esc(p.tagline)}</div></div>
-    <div style="text-align:right">${stamp}<div class="small" style="margin-top:8px">${r.simulations} SPICE simulations · ${r.transistors} transistors<br>generated ${new Date().toISOString().slice(0, 10)} from: “${esc(r.idea)}”</div></div></div>`;
+    <div style="text-align:right">${stamp}${r.live ? "" : ' <span class="stamp amber">FALLBACK RUN</span>'}<div class="small" style="margin-top:8px">${r.simulations} SPICE simulations · ${r.transistors} transistors<br>generated ${new Date().toISOString().slice(0, 10)} from: “${esc(r.idea)}”</div></div></div>`;
 
   h += `<div class="cols"><div><h4>Description</h4><p>${strike(ds.overview, "overview")}</p><h4>Applications</h4><ul class="feat">${ds.applications.map((a, i) => `<li>${strike(a, `applications[${i}]`)}</li>`).join("")}</ul></div>
     <div><h4>Features</h4><ul class="feat">${ds.features.map((f, i) => `<li>${strike(f, `features[${i}]`)}${flagged.some(x => x.field === `features[${i}]`) ? "" : '<span class="ok">✓ traced</span>'}</li>`).join("")}</ul>
@@ -503,6 +525,7 @@ function renderSheet(r) {
   h += `<h4>Design rationale</h4><p>${esc(p.signal_chain)}</p><ul>${p.blocks.map(b => `<li><b>${esc(b.title)}</b>: ${esc(b.why)}</li>`).join("")}</ul>`;
   if (p.repairs.length) h += `<p class="small">The architect's first plan was rejected by the compiler ${p.repairs.length} time(s): ${p.repairs.map(x => x.errors.map(esc).join("; ")).join(" | ")}</p>`;
   if (rs.facts.length) h += `<h4>Research (Tavily)</h4><ol>${rs.facts.map(f => `<li>${esc(f.claim)} — <a href="${esc(f.source)}" target="_blank" rel="noopener">${esc(f.title || f.source)}</a></li>`).join("")}</ol>`;
+  h += `<h4>Provenance</h4><table><tr><th>Agent</th><th>Ran on</th><th>Detail</th></tr>${(r.provenance || []).map(x => `<tr><td>${esc(x.agent)}</td><td>${x.live ? `<span class="badge live">LIVE · ${esc(x.model.split("/").pop())}</span>` : `<span class="badge fb">FALLBACK</span>`}</td><td>${esc(x.detail)}</td></tr>`).join("")}</table>`;
   h += `<h4>How this datasheet was made</h4><table><tr><th>Tier</th><th>Model (Nebius Token Factory)</th><th>Calls</th><th>Tokens in / out</th><th>Time</th><th>≈ Cost</th></tr>`
     + (r.usage.length ? r.usage.map(u => `<tr><td>${u.tier}</td><td class="num">${esc(u.model)}</td><td class="num">${u.calls}</td><td class="num">${u.prompt_tokens} / ${u.completion_tokens}</td><td class="num">${u.seconds}s</td><td class="num">$${u.usd.toFixed(4)}</td></tr>`).join("") : `<tr><td colspan="6" class="small">Offline run: no model calls were made.</td></tr>`)
     + `</table><p class="small">No model wrote a netlist. Models chose the blocks, proposed sizings and failure hypotheses, and wrote prose. Every number on this page came from ngspice, and every failure from a simulation you can open.</p>`;

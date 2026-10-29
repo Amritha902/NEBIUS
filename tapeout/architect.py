@@ -100,6 +100,7 @@ class Plan:
     blocks: list[Block]
     repairs: list[dict] = field(default_factory=list)
     by_model: bool = True
+    fallback: str = ""       # why the reference plan stands in, when it does
 
     def to_dict(self) -> dict:
         return {
@@ -110,6 +111,7 @@ class Plan:
             "blocks": [b.to_dict() for b in self.blocks],
             "repairs": self.repairs,
             "by_model": self.by_model,
+            "fallback": self.fallback,
         }
 
 
@@ -230,7 +232,7 @@ def design_chip(idea: str, research_brief: str, *, ledger: llm.Ledger, emit) -> 
     if not llm.online():
         emit({"type": "log", "agent": "architect",
               "msg": "offline mode: no NEBIUS_API_KEY, using the built-in reference plan"})
-        return offline_plan(idea)
+        return offline_plan(idea, "no NEBIUS_API_KEY")
 
     system = SYSTEM.format(envelope=envelope(), max_analog=MAX_ANALOG,
                            max_digital=MAX_DIGITAL)
@@ -284,12 +286,12 @@ def design_chip(idea: str, research_brief: str, *, ledger: llm.Ledger, emit) -> 
 
     emit({"type": "log", "agent": "architect",
           "msg": "plan still failed to compile after repairs; using the reference plan"})
-    plan = offline_plan(idea)
+    plan = offline_plan(idea, f"Nemotron's plan failed to compile after {len(repairs)} round(s)")
     plan.repairs = repairs
     return plan
 
 
-def offline_plan(idea: str) -> Plan:
+def offline_plan(idea: str, reason: str = "") -> Plan:
     """A sound reference plan, so the fab still runs end to end without a key."""
     raw = {
         "part_number": "TPO-REF1",
@@ -311,4 +313,5 @@ def offline_plan(idea: str) -> Plan:
     plan, errors = compile_plan(raw)
     assert plan, errors
     plan.by_model = False
+    plan.fallback = reason or "reference plan"
     return plan

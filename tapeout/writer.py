@@ -175,6 +175,8 @@ def write(plan, analog, digital, pdk, *, ledger, emit, campaigns=()) -> dict:
                                             "kind": k, "text": t}),
             )
             sheet = _clean(llm.extract_json(answer))
+            if not sheet["overview"] or not sheet["features"]:
+                raise ValueError("datasheet reply had no overview or features")
         except (llm.LLMError, ValueError) as exc:
             emit({"type": "log", "agent": "writer", "msg": f"writer failed: {exc}"})
             break
@@ -191,11 +193,12 @@ def write(plan, analog, digital, pdk, *, ledger, emit, campaigns=()) -> dict:
                 + ". Rewrite the full JSON using only numbers from FACTS."},
         ]
 
+    by_model = sheet is not None
     if sheet is None:
         sheet = offline_sheet(plan, analog, digital, pdk)
         flagged = audit(sheet, known)
     return {"sheet": sheet, "facts": facts, "flagged": flagged,
-            "rewrites": rewrites, "by_model": True}
+            "rewrites": rewrites, "by_model": by_model}
 
 
 def offline_sheet(plan, analog, digital, pdk) -> dict:

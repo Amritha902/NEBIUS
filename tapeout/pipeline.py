@@ -49,10 +49,25 @@ def tapeout(idea: str, emit, *, pdk=None) -> dict:
     def stage(agent, status, **kw):
         emit({"type": "stage", "agent": agent, "status": status, **kw})
 
+    # Which agents actually ran on Nemotron, and why any did not. A fallback
+    # that looks like a live run would make the model look cosmetic, so every
+    # stand-in is declared, on screen and on the datasheet.
+    provenance: list[dict] = []
+
+    def prov(agent, live, model, detail):
+        row = {"agent": agent, "live": bool(live), "model": model if live else "",
+               "detail": detail}
+        provenance.append(row)
+        emit({"type": "provenance", **row})
+
     # 1. Scout
     stage("scout", "running", model=models["nano"])
     findings = research.scout(idea, ledger=ledger, emit=emit)
     stage("scout", "done", facts=len(findings.facts), note=findings.note)
+    prov("scout", llm.online() and findings.facts, models["nano"],
+         f"{len(findings.facts)} cited facts from {len(findings.sources)} Tavily results"
+         if findings.facts else (findings.note or ("no NEBIUS_API_KEY" if not llm.online()
+                                                   else "no facts extracted")))
     emit({"type": "research", **findings.to_dict()})
 
     # 2-3. Architect, checked by the compiler.
@@ -61,8 +76,10 @@ def tapeout(idea: str, emit, *, pdk=None) -> dict:
         plan = architect.design_chip(idea, findings.brief(), ledger=ledger, emit=emit)
     except llm.LLMError as exc:
         emit({"type": "log", "agent": "architect", "msg": f"model call failed: {exc}"})
-        plan = architect.offline_plan(idea)
+        plan = architect.offline_plan(idea, f"model call failed: {str(exc)[:160]}")
     stage("architect", "done", repairs=len(plan.repairs))
+    prov("architect", plan.by_model, models["ultra"],
+         plan.fallback or f"plan compiled after {len(plan.repairs)} repair round(s)")
     emit({"type": "plan", "plan": plan.to_dict()})
 
     # 4. Fab. Logic blocks are proved in parallel with the analog race; the
@@ -90,6 +107,12 @@ def tapeout(idea: str, emit, *, pdk=None) -> dict:
             analog.append(a)
         digital = dig_future.result()
     stage("fab", "done")
+    for a in analog:
+        lane = a.lanes["nemotron"]
+        prov(f"fab:{a.block.id}", lane.sims > 0 and not lane.error, models["super"],
+             lane.error or f"Nemotron proposed {lane.sims} sizings"
+             + (" and won the race" if a.winner == "nemotron" else
+                "; evolution met the spec first"))
 
     # 5. Red team: try to break every analog claim, repair what breaks
     # inside the envelope, and attack the repair again.
@@ -102,12 +125,24 @@ def tapeout(idea: str, emit, *, pdk=None) -> dict:
         if fixed is not a:
             emit({"type": "block_done", "block": fixed.to_dict()})
     stage("redteam", "done")
+    for c in campaigns:
+        by = [h["by"] for h in c["hypotheses"]]
+        n = by.count("nemotron")
+        prov(f"redteam:{c['block']}", n > 0, models["ultra"],
+             f"{n} of {len(by)} hypotheses from Nemotron"
+             + ("" if n == len(by) else
+                f"; {len(by) - n} textbook stand-ins"
+                + (" (no NEBIUS_API_KEY)" if not llm.online() else " (model reply unusable)")))
 
     # 5-6. Writer and auditor.
     stage("writer", "running", model=models["nano"])
     sheet = writer.write(plan, analog, digital, pdk, ledger=ledger, emit=emit,
                          campaigns=campaigns)
     stage("writer", "done", flagged=len(sheet["flagged"]), rewrites=sheet["rewrites"])
+    prov("writer", sheet["by_model"], models["nano"],
+         f"prose audited; {len(sheet['flagged'])} figure(s) struck" if sheet["by_model"]
+         else ("template prose (no NEBIUS_API_KEY)" if not llm.online()
+               else "template prose (model call failed)"))
 
     sims = sum(l.sims for a in analog for l in a.lanes.values())
     sims += sum(c["sims"] for c in campaigns)
@@ -122,6 +157,8 @@ def tapeout(idea: str, emit, *, pdk=None) -> dict:
         "digital": [d.to_dict() for d in digital],
         "datasheet": sheet,
         "campaigns": campaigns,
+        "provenance": provenance,
+        "live": bool(provenance) and all(p["live"] for p in provenance),
         "robust": robust,
         "usage": ledger.summary(),
         "pdk": pdk.name,

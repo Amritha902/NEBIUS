@@ -155,12 +155,25 @@ cp .env.example .env            # add NEBIUS_API_KEY (and TAVILY_API_KEY)
 set -a; . ./.env; set +a; .venv/bin/uvicorn web.server:app --port 8010
 ```
 
+Before a demo, prove the live path in about 30 seconds. This lists the models
+your key can see, resolves the three tiers, makes one call to each, checks
+Tavily, and exits non-zero on any failure:
+
+```bash
+.venv/bin/python -m tapeout.check
+```
+
 Open <http://localhost:8010>, pick an example, and click **Tape out**. Or from
 the terminal:
 
 ```bash
 .venv/bin/tapeout "a wake-on-sound smart doorbell" --json run.json
 ```
+
+**Nothing falls back silently.** A banner reads `LIVE NEMOTRON · ACTIVE`, or
+names each fallback and its reason. Every agent card is tagged
+`LIVE NEMOTRON` or `FALLBACK`, and the datasheet carries a provenance table
+listing which model produced what.
 
 Without `NEBIUS_API_KEY` it runs in **offline mode**: a reference plan and
 textbook failure mechanisms stand in for the agents, and every simulation is
@@ -179,13 +192,43 @@ docker run -p 8010:8010 -e NEBIUS_API_KEY -e TAVILY_API_KEY tapeout
 
 The image fetches only the sky130 primitives it uses. The build fails unless a
 half adder is proved and a slow-corner, 85 °C fork simulates inside the image.
+CI builds the image and smoke-tests the running container on every push.
 The same image runs on any container host. `render.yaml` is included, and on
 Nebius you can serve it as a Serverless Endpoint.
+
+### Testing the live path without a key
+
+`tests/mock_tokenfactory.py` speaks Token Factory's OpenAI-compatible
+dialect: `/v1/models`, streamed `reasoning_content` deltas, inline `<think>`
+tags split across chunks, a final usage chunk with empty `choices`, and
+`[DONE]`. It can also inject a dropped connection or a malformed chunk.
+Every agent runs against it in `tests/test_live_path.py`, so the only part
+not under test is the remote server.
+
+```bash
+python tests/mock_tokenfactory.py 8765 &
+```
+
+```bash
+NEBIUS_API_KEY=test-key NEBIUS_BASE_URL=http://127.0.0.1:8765/v1 .venv/bin/tapeout "a PPG front-end"
+```
+
+Its first run found three bugs that offline mode could never reach:
+
+- **A `<think>` tag split across stream chunks swallowed the answer.** The
+  architect then silently fell back to the reference plan, so a live run
+  would have looked like offline mode.
+- **The sizing lane looped without bound.** Re-proposing an already-simulated
+  sizing costs no simulation budget, so the lane spent 8,884 calls (about
+  $1.17) in one run. It is now capped at twice its simulation budget.
+- **An empty datasheet reply counted as success.**
+
+A dropped stream is now an error that gets retried, never a short answer.
 
 ### Tests
 
 ```bash
-TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 284 tests: engine + compiler, auditor, falsifier, servo
+TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 331 tests: engine, compiler, auditor, falsifier, servo, live path vs. mock
 ```
 
 ---
@@ -195,6 +238,7 @@ TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 284 tests: engine + compiler, audito
 ```
 tapeout/
   llm.py        Token Factory client: streaming, <think>/reasoning capture, tier discovery, usage ledger
+  check.py      `python -m tapeout.check`: proves the live path with a real key
   research.py   scout: Tavily + Nemotron Nano, citations checked against retrieved URLs
   architect.py  Nemotron Ultra planner + the deterministic compiler + self-repair loop
   fab.py        Nemotron Super vs. DE sizing race; multi-condition repair; logic proofs
@@ -216,6 +260,8 @@ bias/           the circuit engine: synthesis, netlist validation, topologies, n
 - **The grid samples the envelope** (5 corners × 3 supplies × 3 temperatures).
   "Holds" means it held at every sampled point and every adversarial probe.
   That is strong evidence, not a proof.
+- **The live path is tested against a protocol-faithful mock, not yet against
+  Token Factory itself.** Run `python -m tapeout.check` with a real key first.
 - Forks are isolated ngspice processes in one container. Running them as
   Nebius Serverless Jobs, or in sandboxes for very large campaigns, is the
   natural next step and is not wired up yet.
@@ -247,6 +293,8 @@ recalibrated gain ceilings are also new.
 - **Thinking output varies by model**, between a `reasoning_content` delta and
   inline `<think>` tags. The client handles both. A documented, uniform field
   across the Nemotron family would remove that code.
+- **Model ids are case-sensitive**, so pinned and default ids are matched
+  case-insensitively against `/v1/models` and the exact listed id is used.
 - **Model-id discovery** via `/v1/models` was essential; ids for the Nemotron 3
   family were hard to confirm from public docs alone. A stable alias per tier
   (`nemotron-ultra-latest`) would help.

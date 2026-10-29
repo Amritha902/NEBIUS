@@ -166,11 +166,19 @@ class _TokenFactoryMessages:
     reports the agent's stated reasoning before its proposal is simulated.
     """
 
-    def __init__(self, ledger, on_turn):
+    def __init__(self, ledger, on_turn, max_calls):
         self.ledger = ledger
         self.on_turn = on_turn
+        self.max_calls = max_calls
+        self.calls = 0
 
     def create(self, *, model, max_tokens, system, messages):
+        # Re-proposing an already-simulated sizing is a free cache hit for the
+        # simulation budget, so without a cap on calls a model that repeats
+        # itself loops (and bills) until the other racer wins.
+        self.calls += 1
+        if self.calls > self.max_calls:
+            raise BudgetExhausted(f"Nemotron lane used its {self.max_calls} calls")
         answer, _ = llm.chat(
             "super",
             [{"role": "system", "content": system}, *messages],
@@ -193,8 +201,8 @@ class _TokenFactoryMessages:
 
 
 class _Client:
-    def __init__(self, ledger, on_turn):
-        self.messages = _TokenFactoryMessages(ledger, on_turn)
+    def __init__(self, ledger, on_turn, max_calls=2 * 14):
+        self.messages = _TokenFactoryMessages(ledger, on_turn, max_calls)
 
 
 @dataclass
@@ -281,7 +289,7 @@ def _race(block, topo_name, pdk, parsed, *, ledger, emit, conditions=None,
         lane = lanes["nemotron"]
         t0 = time.perf_counter()
         try:
-            client = _Client(ledger, lambda r: emit({
+            client = _Client(ledger, max_calls=2 * NEMOTRON_BUDGET, on_turn=lambda r: emit({
                 "type": "turn", "block": block.id, "racer": "nemotron", "phase": phase,
                 "n": lane.sims + 1, "reasoning": r}))
             # A repair starts from the design that broke, the way an engineer

@@ -11,3 +11,15 @@ jobs:
       - run: scripts/fetch_pdk.sh sky130
       - run: pip install -e '.[dev]'
       - run: TAPEOUT_OFFLINE=1 pytest -q
+  image:
+    # The image's own build fails unless a half adder is proved and a
+    # slow-corner 85C fork simulates inside it, so a green build is the check.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t tapeout .
+      - name: smoke-test the running container (offline mode)
+        run: |
+          docker run -d -p 8010:8010 --name t tapeout
+          for i in $(seq 30); do curl -sf localhost:8010/healthz && break; sleep 2; done
+          curl -sf localhost:8010/api/status
