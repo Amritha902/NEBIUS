@@ -1,0 +1,33 @@
+[project]
+name = "tapeout"
+version = "0.1.0"
+description = "Describe a product; Nemotron agents design the chip, then a red team tries to break its datasheet."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pyyaml>=6.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+tapeout = "tapeout.cli:main"
+bias = "bias.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["bias*", "tapeout*", "web*"]
+
+[tool.setuptools.package-data]
+web = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

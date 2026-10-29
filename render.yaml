@@ -1,0 +1,14 @@
+# render.com: point a new Blueprint at this repository, then set the keys.
+services:
+  - type: web
+    name: tapeout
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 8010
+      - key: NEBIUS_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
