@@ -212,6 +212,8 @@ See the "Feedback" section of the README.
 
 All are in `docs/media/`, from the bundled reference run:
 - `shmoo.png`: before vs. after repair (use as the cover image)
+- `hero.png`: the app, with its three-step explanation
+- `architecture.png`: the pipeline diagram (for the 0:20–0:50 video shot)
 - `provenance.png`: what Nemotron did vs. fallbacks (re-capture after the live
   run)
 - `trace.png`: a run's exact SPICE deck and ngspice log

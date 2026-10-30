@@ -3,6 +3,11 @@
 **Most AI chip tools give you a green checkmark. Tapeout hires a red team to
 break its own datasheet, and publishes what breaks.**
 
+> **Every number on the datasheet links to the exact SPICE deck and ngspice
+> log that produced it.** What the red team can't break becomes the promise;
+> what breaks becomes a published limit. `python -m tapeout.verify`
+> re-simulates all 413 recorded measurements on your own machine.
+
 Describe a product in one sentence ("a heart-rate monitor front-end for a
 fitness band") and click **Tape out**. A team of NVIDIA Nemotron agents on
 Nebius Token Factory researches the product, plans the silicon, and sizes

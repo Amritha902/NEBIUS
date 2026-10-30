@@ -33,6 +33,12 @@ header.top{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom
 h1{font-size:clamp(30px,4.6vw,56px);line-height:1.04;margin:12px 0 14px;letter-spacing:-.025em;font-weight:800;max-width:980px}
 h1 em{font-style:normal;background:linear-gradient(90deg,var(--red),var(--amber));-webkit-background-clip:text;background-clip:text;color:transparent}
 .sub{color:var(--dim);font-size:17px;max-width:820px;line-height:1.55}
+.how3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;max-width:980px}
+.how3 div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.how3 b{display:block;font:700 12px var(--mono);color:var(--nv2);margin-bottom:3px}
+.how3 div:nth-child(2) b{color:var(--red)}
+.how3 span{font-size:13px;color:var(--dim)}
+@media (max-width:640px){.how3{grid-template-columns:1fr}}
 .composer{margin-top:26px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;gap:12px;align-items:stretch;box-shadow:0 30px 80px #0008}
 .composer textarea{flex:1;min-height:58px;resize:vertical;background:transparent;border:0;color:var(--text);font:500 18px var(--sans);outline:none;padding:6px}
 .go{background:var(--nv);color:#08110a;border:0;border-radius:12px;font-weight:800;font-size:16px;padding:0 26px;cursor:pointer;display:flex;align-items:center;gap:10px;min-width:170px;justify-content:center}
@@ -169,7 +175,12 @@ del.flag{color:#b0102a;text-decoration:line-through}
   <section class="hero">
     <div class="kicker">Nebius Token Factory · NVIDIA Nemotron · SkyWater 130nm · ngspice</div>
     <h1>Most AI chip tools give you a green checkmark.<br>Tapeout hires a <em>red team</em> to break its own datasheet.</h1>
-    <p class="sub">Describe a product. Nemotron agents research it, design the silicon and size every transistor against a real foundry simulator. Then an adversarial Nemotron works out where each claim should fail, proves it with simulation, and makes the design team fix it. You get a datasheet whose limits have been tested, with the evidence for each one.</p>
+    <p class="sub">Tapeout writes a chip datasheet, then sends a red team to prove where it is false. What it can't break becomes the promise. What breaks becomes a published limit. Every number links to the exact simulation that produced it.</p>
+    <div class="how3">
+      <div><b>1 · Design</b><span>Nemotron plans the chip and sizes every transistor on real foundry models</span></div>
+      <div><b>2 · Attack</b><span>Nemotron predicts where each claim fails; ngspice is the judge</span></div>
+      <div><b>3 · Publish</b><span>Survivors become promises, breaks become limits, each with its trace</span></div>
+    </div>
     <div class="composer">
       <textarea id="idea" maxlength="500" placeholder="e.g. a heart-rate monitor front-end for a fitness band"></textarea>
       <button class="go" id="go">▶ Tape out</button>
