@@ -118,8 +118,12 @@ here is ours".
 - A datasheet whose limits are found by simulation, with every number
   traceable to the run that produced it.
 - No silent fallbacks: if Nemotron didn't do something, the page says so.
-- 340 tests. CI builds the container and proves a sky130 simulation inside
+- 346 tests. CI builds the container and proves a sky130 simulation inside
   it.
+- **The evidence re-runs anywhere.** `python -m tapeout.verify` re-simulates
+  all 83 stored decks of the reference run on the checker's own machine.
+  413 of 413 recorded measurements reproduce; a doctored number is caught.
+  CI does this on every push.
 - A recorded clean-room run (fresh clone → 340 tests passing in under 2
   minutes) is in `docs/CLEANROOM.md`.
 - A judge can verify the simulation path with no keys at all:

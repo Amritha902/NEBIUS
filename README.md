@@ -225,6 +225,24 @@ CI builds the image and smoke-tests the running container on every push.
 The same image runs on any container host. `render.yaml` is included, and on
 Nebius you can serve it as a Serverless Endpoint.
 
+### Check the evidence yourself
+
+Every deck a datasheet links to is stored in the recording. This re-runs all
+of them on your own ngspice and sky130 models, then compares every recorded
+measurement:
+
+```bash
+.venv/bin/python -m tapeout.verify web/replays/ppg-offline.jsonl
+```
+
+```
+VERIFIED: all 83 runs reproduced; 413 recorded measurements matched within 1e-03 relative.
+```
+
+It trusts nothing from the run except the deck text. A doctored number or a
+doctored deck makes it fail (`tests/test_verify.py`). CI runs it on GitHub's
+machines on every push.
+
 ### Testing the live path without a key
 
 `tests/mock_tokenfactory.py` speaks Token Factory's OpenAI-compatible
@@ -260,7 +278,7 @@ A recorded clean-room run (fresh clone, fresh venv, no keys) is in
 [docs/CLEANROOM.md](docs/CLEANROOM.md).
 
 ```bash
-TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 340 tests: engine, compiler, auditor, falsifier, servo, live path vs. mock
+TAPEOUT_OFFLINE=1 .venv/bin/pytest -q     # 346 tests: engine, compiler, auditor, falsifier, servo, live path vs. mock
 ```
 
 ---

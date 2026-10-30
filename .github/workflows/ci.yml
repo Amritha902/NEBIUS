@@ -11,6 +11,8 @@ jobs:
       - run: scripts/fetch_pdk.sh sky130
       - run: pip install -e '.[dev]'
       - run: TAPEOUT_OFFLINE=1 pytest -q
+      - name: re-simulate every deck in the bundled recording on this runner
+        run: python -m tapeout.verify web/replays/ppg-offline.jsonl
   image:
     # The image's own build fails unless a half adder is proved and a
     # slow-corner 85C fork simulates inside it, so a green build is the check.

@@ -595,7 +595,7 @@ function renderSheet(r) {
   h += `<h4>Provenance</h4><table><tr><th>Agent</th><th>Ran on</th><th>Detail</th></tr>${(r.provenance || []).map(x => `<tr><td>${esc(x.agent)}</td><td>${x.live ? `<span class="badge live">LIVE · ${esc(x.model.split("/").pop())}</span>` : `<span class="badge fb">FALLBACK</span>`}</td><td>${esc(x.detail)}</td></tr>`).join("")}</table>`;
   h += `<h4>How this datasheet was made</h4><table><tr><th>Tier</th><th>Model (Nebius Token Factory)</th><th>Calls</th><th>Tokens in / out</th><th>Time</th><th>≈ Cost</th></tr>`
     + (r.usage.length ? r.usage.map(u => `<tr><td>${u.tier}</td><td class="num">${esc(u.model)}</td><td class="num">${u.calls}</td><td class="num">${u.prompt_tokens} / ${u.completion_tokens}</td><td class="num">${u.seconds}s</td><td class="num">$${u.usd.toFixed(4)}</td></tr>`).join("") : `<tr><td colspan="6" class="small">Offline run: no model calls were made.</td></tr>`)
-    + `</table><p class="small">No model wrote a netlist. Models chose the blocks, proposed sizings and failure hypotheses, and wrote prose. Every number on this page came from ngspice, and every failure from a simulation you can open.</p>`;
+    + `</table><p class="small"><b>Check it yourself:</b> <code>python -m tapeout.verify &lt;recording&gt;</code> re-simulates every stored deck on your own ngspice and sky130 models and compares each recorded number (${r.campaigns.reduce((n, c) => n + Object.values(c.runs).filter(x => x.deck).length, 0)} decks in this run).</p><p class="small">No model wrote a netlist. Models chose the blocks, proposed sizings and failure hypotheses, and wrote prose. Every number on this page came from ngspice, and every failure from a simulation you can open.</p>`;
 
   $("#sheet").innerHTML = h;
 }
