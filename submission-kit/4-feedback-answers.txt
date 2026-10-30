@@ -1,0 +1,34 @@
+FEEDBACK SURVEY ANSWERS (Most Valuable Feedback prize)
+=====================================================
+
+Nebius Token Factory
+- The OpenAI-compatible streaming API made the live agent UI cheap to build:
+  the browser console is just the token stream re-emitted. Usage arrives in
+  the final chunk (stream_options.include_usage), so per-model cost
+  accounting was trivial.
+- Model ids are case-sensitive, and Nemotron 3 ids were hard to confirm from
+  public docs. We resolve them at startup from GET /v1/models. Request: a
+  stable alias per tier (e.g. nemotron-ultra-latest) and one docs page
+  listing exact ids.
+- Request: a documented "thinking off" switch per model. We used
+  chat_template_kwargs {"enable_thinking": false} for fast JSON replies, but
+  found it by trial and error.
+
+NVIDIA Nemotron
+- Tier split works as advertised:
+  - Ultra for the two decisions where reasoning depth changes the outcome
+    (the chip plan, and predicting where a circuit fails).
+  - Super for a fast inner loop with a simulator (10-20 short JSON calls per
+    block).
+  - Nano for extraction and prose.
+- Thinking output varies by model, either a reasoning_content delta or inline
+  <think> tags. Tags split across stream chunks broke our first parser. A
+  single documented field across the family would remove that code.
+- Request: a JSON-mode / schema guarantee per model, so agent loops don't
+  need brace-matching fallbacks.
+
+Tavily
+- Search results with page content let us do citation-enforced generation:
+  a figure the model reports is kept only if it appears verbatim in a page
+  Tavily retrieved. That turned Tavily into an audit trail, not just a
+  search box.

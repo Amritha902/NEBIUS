@@ -31,7 +31,7 @@ any counterexample on the page.
 **Documents:** [Project report (PDF)](docs/Tapeout-Project-Report.pdf) ·
 [Setup & submission guide (PDF)](docs/Tapeout-Setup-Guide.pdf) ·
 [Demo script](docs/DEMO.md) · [Devpost text](docs/DEVPOST.md) ·
-[Clean-room run](docs/CLEANROOM.md)
+[Clean-room run](docs/CLEANROOM.md) · [Devpost submission kit + demo video](submission-kit/)
 
 ---
 

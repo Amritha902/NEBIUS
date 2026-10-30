@@ -1,0 +1,17 @@
+TAPEOUT: DEVPOST SUBMISSION KIT
+Deadline: 30 Oct 2026, 10:30 PM IST
+
+Start with 3-Tapeout-Devpost-Submission.pdf. It walks through every field.
+
+1. Before filling the form:
+   - GitHub repo -> Settings -> Pages -> main, /docs -> Save.
+   - In Settings -> Branches, set the default branch to main.
+   - Upload video/Tapeout-demo.mp4 to YouTube as PUBLIC.
+2. Copy the short fields from 1-devpost-fields.txt.
+3. Paste 2-devpost-description.md into "About the project".
+4. Upload the 7 images in images/ (shmoo.png first: it's the cover).
+5. Tick Best Use of Tavily; fill in the feedback survey with
+   4-feedback-answers.txt.
+6. Submit, then open the public page and click every link.
+
+Repo: https://github.com/Amritha902/NEBIUS (public, MIT)

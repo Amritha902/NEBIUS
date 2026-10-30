@@ -1,0 +1,20 @@
+VOICEOVER for video/Tapeout-demo.mp4 (2 min 12 s, 1920x1080, AI voiceover + subtitles)
+
+The narration is AI-generated with Kokoro, an open-source neural text-to-speech
+model (voice "af_heart"), run locally. Subtitles show the same words. The music
+bed is synthesized. The screens are a recorded OFFLINE run of the app:
+built-in stand-ins replace Nemotron there, and every simulation is real. The
+video says this out loud at 0:39.
+
+0:01.3  Every AI chip demo shows you a circuit that passes. Tapeout shows you where it breaks, and proves it.
+0:08.0  AI can already write a datasheet. The problem is, nobody stands behind the numbers. So Tapeout writes the datasheet, then sends a red team to prove where it's false.
+0:19.3  Three NVIDIA Nemotron tiers, served by Nebius Token Factory. Ultra plans the chip and predicts how it will fail. Super sizes every transistor. Nano researches, and writes. But the judge is not a model. The judge is N G spice, running real SkyWater foundry models.
+0:38.8  One sentence in. One click. This is a recorded offline run, so built-in stand-ins replace the models here. But every simulation you see is real.
+0:49.4  The agents stream live. The fab races Nemotron against an evolutionary optimizer to size the amplifier. Then the red team attacks. Each card is a predicted failure mechanism. Green means the claim held. Red means it broke.
+1:05.1  Round one. Phase margin collapses to twenty three degrees, against a fifty five degree claim. Bandwidth falls to seventy six kilohertz. So the design goes back for repair, and gets attacked again.
+1:18.1  The shmoo plot tells the whole story. Forty two failures inside the operating envelope as first designed. Zero, after two repairs. The red that remains sits outside the envelope, and is published as a limit.
+1:32.5  And every number links to the exact spice deck, and the raw simulator log, that produced it.
+1:38.9  You get a robustness envelope, and a falsification log, where every counterexample becomes a permanent regression test.
+1:46.7  A provenance table declares which agent ran live on Nemotron, and which was a fallback. Nothing is passed off as live.
+1:55.5  Don't take our word for it. One command re-simulates all four hundred and thirteen recorded measurements, on your own machine.
+2:03.6  Tapeout. Limits proven, not claimed. Built with NVIDIA Nemotron, on Nebius Token Factory.

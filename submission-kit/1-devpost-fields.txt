@@ -1,0 +1,59 @@
+TAPEOUT: DEVPOST FIELDS (copy each into the matching box)
+=========================================================
+
+Project name:
+Tapeout
+
+Elevator pitch / tagline (max ~200 characters):
+An AI chip designer that tries to prove its own datasheet wrong. Nemotron designs; a red team attacks across corners; ngspice judges. Every number links to its simulation.
+
+About the project / description:
+Paste the whole of 2-devpost-description.md (Devpost accepts Markdown).
+
+Built with (type each, press Enter):
+nvidia-nemotron
+nebius-token-factory
+tavily
+python
+fastapi
+ngspice
+skywater-sky130
+server-sent-events
+docker
+playwright
+
+Track / category:
+Best Apps and Agents
+
+Also opt in to:
+Best Use of Tavily
+Most Valuable Feedback (fill in the survey: answers are in 4-feedback-answers.txt)
+
+"Try it out" links:
+1. https://github.com/Amritha902/NEBIUS                       (code; public, MIT license)
+2. https://amritha902.github.io/NEBIUS/demo/                  (instant demo; works only AFTER enabling GitHub Pages, see the PDF)
+3. https://claude.ai/artifact/YFqwxVpe3B6LLcDgoV2MmE           (instant demo; works only AFTER the owner sets Share -> anyone with the link)
+
+Video demo link:
+<your YouTube link> (upload video/Tapeout-demo.mp4 as PUBLIC: 2 min 12 s, AI voiceover, see the PDF)
+
+Image gallery (upload in this order; the first is the cover):
+images/shmoo.png
+images/hero.png
+images/architecture.png
+images/trace.png
+images/robustness.png
+images/provenance.png
+images/falsification-log.png
+
+If asked "did the project exist before the hackathon?":
+Yes, partially. The circuit engine (bias/) comes from our earlier project cadence_auto (github.com/Amritha902/cadence_auto). Everything in tapeout/ and web/ was built during the submission period:
+- the Nemotron/Token Factory agents
+- Tavily research and verified commercial reference
+- the compiler repair loop and the Nemotron-vs-evolution sizing race
+- the falsification engine, multi-corner repair, regression tests and shmoo plots
+- the auditor, provenance labelling, independent re-verification and the UI
+In the engine, the DC-servo testbench and process-corner forking are also new.
+
+City (Builders & Brews):
+Only if you attended one in person. Otherwise leave it blank.
