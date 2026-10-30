@@ -1,0 +1,3 @@
+This repository does not redistribute any process design kit. The open PDKs it
+supports (SkyWater SKY130, IHP SG13G2) are Apache-2.0 licensed and are fetched
+from their upstream repositories by scripts/fetch_pdk.sh.

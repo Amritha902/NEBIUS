@@ -332,5 +332,5 @@ recalibrated gain ceilings are also new.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The SkyWater sky130 models are Apache-2.0. They
+MIT. See [LICENSE](LICENSE) and [NOTICE](NOTICE). The SkyWater sky130 models are Apache-2.0. They
 are fetched at build time, not vendored.
