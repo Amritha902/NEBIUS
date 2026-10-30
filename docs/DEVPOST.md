@@ -12,6 +12,17 @@ fastapi, ngspice, skywater-sky130, server-sent-events, docker
 
 ---
 
+> **Every number on the datasheet links to the exact SPICE deck and ngspice
+> log that produced it.** Tapeout writes a datasheet, then sends a red team
+> to prove where it is false. What survives becomes the promise; what breaks
+> becomes a published limit. Run `python -m tapeout.verify` and all 413
+> recorded measurements re-simulate on your own machine.
+
+**Status, stated plainly:** the live Nebius Token Factory path is tested end
+to end against a protocol-faithful mock. Real-model runs are labelled LIVE
+and offline stand-ins are labelled FALLBACK, both on screen and in the
+datasheet's provenance table.
+
 ## Inspiration
 
 LLM agents can now draft analog circuits, but a generated datasheet is a
@@ -19,6 +30,21 @@ claim, not evidence. Every demo shows a green checkmark at one operating
 point: typical silicon, nominal supply, room temperature. Real chips get
 judged at their corners. We wanted the agent that does the engineer's
 hardest job: trying to break the claim before anyone else does.
+
+The real problem isn't generating datasheets; AI can already do that. It's
+that **nobody stands behind the numbers**. Tapeout is a generator whose
+deliverable records:
+- who broke which promise
+- under what conditions
+- with which simulation as proof
+
+That matters for:
+- **Hardware reliability:** the gap between promise and behaviour becomes
+  auditable.
+- **AI reliability:** every model claim is judged by an outside simulator,
+  not by the model itself.
+- **EDA workflows:** every counterexample becomes a permanent regression
+  test.
 
 ## What it does
 
@@ -55,6 +81,19 @@ operating box turning green. Click any number to see the exact SPICE deck and ra
 ngspice output behind it.
 
 ## How we built it
+
+**The model proposes; the simulator judges.** The tiers are split by what
+each task needs:
+- **Nemotron Ultra** makes the two decisions where reasoning depth changes
+  the outcome: the chip plan and the failure hypotheses.
+- **Nemotron Super** runs the latency-bound inner loop with the simulator,
+  10–20 sizing calls per block.
+- **Nemotron Nano** does fast extraction and prose.
+
+No model output is accepted on its word. Every hypothesis is tested against
+ngspice and bisected 5 times to its exact boundary, and every surviving
+claim is re-attacked after each repair.
+
 
 - **Models:** Nebius Token Factory via its OpenAI-compatible streaming API,
   with three Nemotron tiers split by job:
@@ -100,6 +139,15 @@ Integration surprises came out of a protocol-faithful Token Factory mock:
 Both are fixed and covered by tests.
 
 ## Best Use of Tavily
+
+**Why Tavily is load-bearing: this is citation-enforced generation, not
+RAG.**
+- A commercial reference figure survives only if it appears verbatim, with
+  the right unit, in the page Tavily retrieved.
+- When the model invented "140 dB", it was discarded, and the datasheet says
+  so.
+- Tavily's retrieval is the audit trail that makes the reference column
+  trustworthy.
 
 Tavily does two jobs, and neither is decoration:
 - **Grounding the design.** The scout's search results become cited facts
@@ -159,3 +207,13 @@ In `bias/`, the DC-servo testbench and process-corner forking are also new.
 ## Feedback on Nebius Token Factory and NVIDIA Nemotron
 
 See the "Feedback" section of the README.
+
+## Images to upload to the Devpost gallery
+
+All are in `docs/media/`, from the bundled reference run:
+- `shmoo.png`: before vs. after repair (use as the cover image)
+- `provenance.png`: what Nemotron did vs. fallbacks (re-capture after the live
+  run)
+- `trace.png`: a run's exact SPICE deck and ngspice log
+- `robustness.png`: claims, worst cases and published limits
+- `falsification-log.png`: rounds, hypotheses, repairs

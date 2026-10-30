@@ -9,16 +9,17 @@
 - Keep a clean recorded run as a backup. The static replay page
   (`docs/demo/`) works with no server at all.
 
+Rule: models talk at most 30% of the time; simulator evidence fills the
+rest.
+
 | time | on screen | say |
 | --- | --- | --- |
-| 0:00–0:15 | Title page | "Every AI chip demo shows you a circuit that passes. Tapeout shows you where it breaks, and proves it with a simulation log." |
-| 0:15–0:40 | Click the PPG example. Show the green `LIVE NEMOTRON · ACTIVE` banner and the model ids on the agent cards. | "Six agents on **NVIDIA Nemotron**, served by **Nebius Token Factory**: Ultra plans and attacks, Super sizes, Nano researches and writes. Tavily grounds it in real datasheets." |
-| 0:40–1:10 | Scout's commercial-reference line; the race chart with Nemotron's reasoning under it. | "It found the op-amp a product team would buy, kept only the numbers it could find verbatim in that datasheet, and is now sizing ours on SkyWater 130nm." |
-| 1:10–1:40 | Red-team cards turning red: phase margin and bandwidth broken at the corners. | "Nemotron predicts where each claim should fail. The simulator proves it, and a corner grid checks the predictions." |
-| 1:40–2:05 | The shmoo plot: before (red inside the dashed box) vs. after repair (green). Click one red cell to open its deck and ngspice log. | "Each cell is a real simulation. Red inside the box was a broken promise. After repair it's green, and the limits outside the box are published, not hidden." |
-| 2:05–2:25 | The **provenance table**. Hold it for at least 8 seconds. | "Every agent declares whether it ran live on Nemotron. Nothing falls back silently." |
-| 2:25–2:50 | The robustness table and falsification log. Click a number to open its trace. | "One bug it caught was in our own testbench: a 5% supply droop looked like 63 dB collapsing to 28. A DC servo fixed it." |
-| 2:50–3:00 | End card: repo URL, demo URL, MIT. | "Limits proven, not claimed. **NVIDIA Nemotron** on **Nebius Token Factory**." |
+| 0:00–0:20 | One-line definition, then the shmoo plot: red before, green after | "AI can write a datasheet. What's rare is one that dares to be proven wrong. Tapeout writes a datasheet, then sends a red team to prove where it's false." |
+| 0:20–0:50 | Architecture: Scout → Architect → Fab → Red team → Repair → Datasheet | "Three **NVIDIA Nemotron** tiers on **Nebius Token Factory**: Ultra for hypotheses, Super for sizing, Nano for prose. But the judge is not a model. The judge is ngspice." |
+| 0:50–1:40 | Click a run id; show the SPICE deck and ngspice log | "The red team predicted phase margin would collapse at this corner. That isn't the model talking: it's the simulator, on this exact deck. Every number links back here." |
+| 1:40–2:20 | The shmoo plot, before vs. after | "After two repairs, 42 failures inside the envelope became zero. The red cells left are outside it. They aren't bugs; they're published limits." |
+| 2:20–2:50 | The provenance table, held at least 8 seconds, LIVE/FALLBACK tags visible | "This table declares what live **Nemotron** did and what a fallback did. Nothing is passed off as live." |
+| 2:50–3:00 | Repo and demo URL | "Limits proven, not claimed. **NVIDIA Nemotron** on **Nebius Token Factory**." |
 
 A live run gives different numbers from any earlier run. Narrate what's on
 screen; don't read numbers from this script.
