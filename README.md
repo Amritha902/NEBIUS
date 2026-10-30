@@ -23,6 +23,11 @@ any counterexample on the page.
 
 > Track: **Best Apps and Agents**. Also entered for **Best Use of Tavily**.
 
+**Documents:** [Project report (PDF)](docs/Tapeout-Project-Report.pdf) ·
+[Setup & submission guide (PDF)](docs/Tapeout-Setup-Guide.pdf) ·
+[Demo script](docs/DEMO.md) · [Devpost text](docs/DEVPOST.md) ·
+[Clean-room run](docs/CLEANROOM.md)
+
 ---
 
 ## What a run looks like
