@@ -26,12 +26,12 @@ temperature for every process corner, before and after the repair. For every cla
 it breaks, and the simulation deck and ngspice log proving it. You can click
 any counterexample on the page.
 
-> Track: **Best Apps and Agents**. Also entered for **Best Use of Tavily**.
+**Watch:** [demo video, 2 min](submission-kit/video/Tapeout-demo.mp4) ·
+[interactive replay](docs/demo/index.html) (open it locally, or via GitHub Pages)
 
-**Documents:** [Project report (PDF)](docs/Tapeout-Project-Report.pdf) ·
-[Setup & submission guide (PDF)](docs/Tapeout-Setup-Guide.pdf) ·
-[Demo script](docs/DEMO.md) · [Devpost text](docs/DEVPOST.md) ·
-[Clean-room run](docs/CLEANROOM.md) · [Devpost submission kit + demo video](submission-kit/)
+**Read:** [project report (PDF)](docs/Tapeout-Project-Report.pdf) ·
+[setup guide (PDF)](docs/Tapeout-Setup-Guide.pdf) ·
+[clean-room run](docs/CLEANROOM.md)
 
 ---
 
@@ -326,7 +326,7 @@ bias/           the circuit engine: synthesis, netlist validation, topologies, n
 The circuit engine in `bias/` comes from the author's earlier project
 [cadence_auto](https://github.com/Amritha902/cadence_auto): text-to-circuit
 synthesis, netlist validation and an LLM-sizing benchmark on open PDKs.
-Everything in `tapeout/` and `web/` was built during the submission period:
+Everything in `tapeout/` and `web/` is new in this project:
 
 - the Nemotron/Token Factory agents
 - Tavily research
@@ -339,7 +339,7 @@ Everything in `tapeout/` and `web/` was built during the submission period:
 In `bias/`, the DC-servo testbench, process-corner forking and the
 recalibrated gain ceilings are also new.
 
-## Feedback: Nebius Token Factory and NVIDIA Nemotron
+## Notes from building on Token Factory and Nemotron
 
 - **OpenAI-compatible streaming made the live UI cheap to build.** The agent
   console is just the SSE stream re-emitted. Usage arrives in the final chunk
@@ -357,6 +357,10 @@ recalibrated gain ceilings are also new.
   where reasoning depth changed the outcome. The sizing loop needs fast, short
   JSON replies, so it runs on Super with thinking disabled through
   `chat_template_kwargs`.
+
+## Author
+
+Built by **Amritha S** ([@Amritha902](https://github.com/Amritha902)).
 
 ## License
 
