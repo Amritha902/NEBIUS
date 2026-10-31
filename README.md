@@ -26,8 +26,13 @@ temperature for every process corner, before and after the repair. For every cla
 it breaks, and the simulation deck and ngspice log proving it. You can click
 any counterexample on the page.
 
-**Watch:** [demo video, 2 min](submission-kit/video/Tapeout-demo.mp4) ·
-[interactive replay](docs/demo/index.html) (open it locally, or via GitHub Pages)
+### ▶ Live demo: **[amritha902.github.io/NEBIUS/demo](https://amritha902.github.io/NEBIUS/demo/)**
+
+Open it and click **"Watch a recorded run"**. It replays a full tape-out in
+about 25 seconds, right in your browser. Every number on the datasheet still
+opens the simulation behind it.
+
+**Watch:** [demo video, 2 min](submission-kit/video/Tapeout-demo.mp4)
 
 **Read:** [project report (PDF)](docs/Tapeout-Project-Report.pdf) ·
 [setup guide (PDF)](docs/Tapeout-Setup-Guide.pdf) ·
@@ -191,8 +196,8 @@ for GitHub Pages: no cold start, no credits, labelled `REPLAY`.
 python scripts/export_static.py
 ```
 
-Enable it under Settings → Pages → Deploy from branch `main`, folder `/docs`.
-It then serves at `https://<user>.github.io/NEBIUS/demo/`.
+It is published with GitHub Pages (branch `main`, folder `/docs`) at
+https://amritha902.github.io/NEBIUS/demo/.
 
 **Instant replay for visitors.** A full run takes 3–5 minutes and spends
 model credits. Record one run, and the hosted demo offers
